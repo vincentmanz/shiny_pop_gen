@@ -42,5 +42,14 @@ server_map <- function(input, output, session, df_reactive) {
       req(input$run_map)  # Show the table after clicking "Run Map" button
       populationsLL_grouped
     })
+    # Render the map
+    output$map <- renderLeaflet({
+      leaflet(populationsLL_grouped) %>%
+        addTiles() %>%
+        addCircles(lng = populationsLL_grouped$Latitude, lat = populationsLL_grouped$Longitude, 
+                   popup=paste("Population size:", df$Population_size), 
+                   radius = df$Population_size * 50,
+                   stroke = FALSE, fillOpacity = 0.5)
+    })
   })
 }

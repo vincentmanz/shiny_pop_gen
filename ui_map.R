@@ -10,7 +10,8 @@ mapUI <- function() {
     ),
     mainPanel(
       h3("Populations, coordinates, and population sizes"),
-      tableOutput("populationsLL_uniq_table")
+      tableOutput("populationsLL_uniq_table"),
+      leafletOutput("map") 
     )
   )
 }
