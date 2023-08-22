@@ -31,14 +31,16 @@ server_map <- function(input, output, session, df_reactive) {
     # Create the populationsLL data frame
     populationsLL <- df_reactive() %>%
       select(input$population_var, input$latitude_var, input$longitude_var)
-    
-    # Remove duplicated rows and create populationsLL_uniq
-    populationsLL_uniq <- unique(populationsLL)
-    
-    # Render the populationsLL_uniq data frame as a table
+ 
+       # Group by Locality, Latitude, and Longitude, and calculate Population Size
+    populationsLL_grouped <- populationsLL %>%
+      group_by_all()%>%count()
+    colnames(populationsLL_grouped) <- c('population', 'Longitude', 'Latitude', 'Population size')
+ 
+      # Render the populationsLL_uniq data frame as a table
     output$populationsLL_uniq_table <- renderTable({
       req(input$run_map)  # Show the table after clicking "Run Map" button
-      populationsLL_uniq
+      populationsLL_grouped
     })
   })
 }
