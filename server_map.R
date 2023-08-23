@@ -30,8 +30,8 @@ server_map <- function(input, output, session, df_reactive) {
        # Group by Locality, Latitude, and Longitude, and calculate Population Size
     populationsLL_grouped <- populationsLL %>%
       group_by_all()%>%count()
-    colnames(populationsLL_grouped) <- c('population', 'Longitude', 'Latitude', 'Population size')
- 
+    colnames(populationsLL_grouped) <- c('Population', 'Longitude', 'Latitude', 'Population size')
+
       # Render the populationsLL_uniq data frame as a table
     output$populationsLL_uniq_table <- renderTable({
       req(input$run_map)  # Show the table after clicking "Run Map" button
@@ -42,8 +42,8 @@ server_map <- function(input, output, session, df_reactive) {
       leaflet(populationsLL_grouped) %>%
         addTiles() %>%
         addCircles(lng = populationsLL_grouped$Latitude, lat = populationsLL_grouped$Longitude, 
-                   popup=paste("Location:", populationsLL_grouped$population, "<br>","Population size:", populationsLL_grouped$Population_size), 
-                   radius = populationsLL_grouped$Population_size * 50,
+                   popup=paste("Location:", populationsLL_grouped$Population, "<br>","Population size:", populationsLL_grouped$`Population size`), 
+                   radius = populationsLL_grouped$`Population size` * 50,
                    stroke = FALSE, fillOpacity = 0.5)
     })
   })
