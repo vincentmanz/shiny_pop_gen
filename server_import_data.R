@@ -1,3 +1,5 @@
+default_df <- readr::read_tsv("https://www.t-de-meeus.fr/Enseign/BoophilusAdultsDataCattle.txt")
+
 server_import_data <- function(input, output, session) {
   
 
