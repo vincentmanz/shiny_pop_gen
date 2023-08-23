@@ -1,5 +1,5 @@
-################################## Input Data tab ################################
-
+# Load default data from a URL
+default_df <- readr::read_tsv("https://www.t-de-meeus.fr/Enseign/BoophilusAdultsDataCattle.txt")
 generateImportDataUI <- function() {
   fluidPage(
     # Box title
@@ -7,12 +7,6 @@ generateImportDataUI <- function() {
     # Sidebar panel for file input
     sidebarLayout(
       sidebarPanel(
-        # Input: Load default data button
-        actionButton("load_default_data", "Load Default Data"),
-        
-        # Horizontal line
-        tags$hr(),
-        
         # Input: Select a file
         fileInput("file1", "Choose CSV File",
                   multiple = TRUE,
@@ -42,7 +36,7 @@ generateImportDataUI <- function() {
         # Horizontal line ----
         tags$hr(),
         
-        # Input: Display mode radio buttons
+        # Input: Select number of rows to display ----
         radioButtons("disp", "Display",
                      choices = c(Head = "head",
                                  All = "all"),
@@ -58,4 +52,3 @@ generateImportDataUI <- function() {
     )
   )
 }
-
