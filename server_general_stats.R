@@ -72,19 +72,39 @@ server_general_stats <- function(input, output, session) {
       }
     }
     
-    output$missing_info <- renderUI({  
-      result_table <- data.frame(
-        Column_Range = col_ranges,
-        Missing_Count = missing_counts,
-        Missing_Percentage = missing_percentages
+    # Create a data frame for the missing info
+    missing_info_df <- data.frame(
+      Column_Range = col_ranges,
+      Missing_Count = missing_counts,
+      Missing_Percentage = missing_percentages
+    )
+    
+    # Render the missing info as HTML code
+    output$missing_info <- renderUI({
+      HTML(
+        paste(
+          "<table class='table shiny-table table-spacing-s' style='width:auto;'>",
+          "<thead> <tr>",
+          "<th style='text-align: left;'> Column_Range </th>",
+          "<th style='text-align: right;'> Missing_Count </th>",
+          "<th style='text-align: right;'> Missing_Percentage </th>",
+          "</tr> </thead>",
+          "<tbody>",
+          apply(missing_info_df, 1, function(row) {
+            paste("<tr>",
+                  "<td>", row[1], "</td>",
+                  "<td align='right'>", row[2], "</td>",
+                  "<td align='right'>", row[3], "</td>",
+                  "</tr>", sep = "")
+          }),
+          "</tbody>",
+          "</table>"
+        )
       )
-      
-      table_html <- renderTable(result_table, class = 'table shiny-table table-spacing-s', sanitize.text.function = function(x) x)
-      
-      HTML(as.character(table_html))
     })
+    
   })
   
-#  outputOptions(output, "missing_info", suspendWhenHidden = FALSE)  # Keep output active
+  # outputOptions(output, "missing_info", suspendWhenHidden = FALSE)  # Keep output active
   
 }
