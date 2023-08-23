@@ -1,15 +1,9 @@
 server_general_stats <- function(input, output, session) {
   
   # Define the reactive expression to hold the data frame
-  df_reactive <- reactive({
-    req(input$file1)
-    read.csv(input$file1$datapath,
-             header = input$header,
-             sep = input$sep,
-             quote = input$quote)
-  })
+  df_reactive <- reactiveVal(default_df)
   
-  # Update the select input choices
+  # Update the select input choices for "Population" and "Individuals"
   observe({
     req(df_reactive())
     df <- df_reactive()

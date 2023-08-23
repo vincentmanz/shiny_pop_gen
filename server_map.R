@@ -1,14 +1,9 @@
 server_map <- function(input, output, session, df_reactive) {
   
   # Define your reactive data frame
-  df_reactive <- reactive({
-    req(input$file1)
-    read.csv(input$file1$datapath,
-             header = input$header,
-             sep = input$sep,
-             quote = input$quote)
-  })
+  df_reactive <- reactiveVal(default_df)
   
+  # Update the select input choices
   observe({
     req(df_reactive())
     df <- df_reactive()
@@ -47,8 +42,8 @@ server_map <- function(input, output, session, df_reactive) {
       leaflet(populationsLL_grouped) %>%
         addTiles() %>%
         addCircles(lng = populationsLL_grouped$Latitude, lat = populationsLL_grouped$Longitude, 
-                   popup=paste("Population size:", df$Population_size), 
-                   radius = df$Population_size * 50,
+                   popup=paste("Location:", populationsLL_grouped$population, "<br>","Population size:", populationsLL_grouped$Population_size), 
+                   radius = populationsLL_grouped$Population_size * 50,
                    stroke = FALSE, fillOpacity = 0.5)
     })
   })

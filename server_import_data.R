@@ -1,15 +1,15 @@
 server_import_data <- function(input, output, session) {
   
-  ##### Data ####
   
-  df <- reactiveVal(default_df)
+  # Data
+  loaded_data <- reactiveVal()
+  default_display_mode <- reactiveVal("head")  # Initialize default display mode
   
-  # Input: Button for choosing default data
-  observeEvent(input$use_default_data, {
-    isolate({
-      df(default_df)
-      updateFileInput(session, "file1", label = "Choose CSV File", value = "")
-    })
+  # Input: Load default data button
+  observeEvent(input$load_default_data, {
+    df(default_df)
+    default_df_display("head")  # Reset display mode to "Head"
+    updateFileInput(session, "file1", label = "Choose CSV File", value = "")  # Reset file input
   })
   
   # Input: File upload
@@ -24,11 +24,10 @@ server_import_data <- function(input, output, session) {
   output$contents <- renderTable({
     req(df())
     
-    if (input$disp == "head") {
+    if (default_df_display() == "head") {
       return(head(df()))
     } else {
       return(df())
     }
   })
-
 }
