@@ -1,3 +1,20 @@
+tags$head(
+  tags$style(
+    HTML(
+      ".fixed-filtering-data {
+         position: fixed;
+         top: 100px; /* Adjust this value as needed */
+         right: 20px; /* Adjust this value as needed */
+         width: 300px; /* Adjust this value as needed */
+         background-color: white;
+         border: 1px solid #ccc;
+         padding: 10px;
+      }"
+    )
+  )
+)
+
+
 generateImportDataUI <- function() {
   fluidPage(
     # Box title
@@ -55,6 +72,7 @@ generateImportDataUI <- function() {
     # Additional sidebar panel for filtering data
     sidebarPanel(
       h3("Filtering data"),
+      class = "fixed-filtering-data",
       
       # Input: Exclude columns
       textInput("exclude_cols", "Exclude columns (comma-separated)", ""),
