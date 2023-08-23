@@ -12,12 +12,8 @@ generateImportDataUI <- function() {
                   accept = c("text/csv",
                              "text/comma-separated-values,text/plain",
                              ".csv")),
-        # ... (other inputs)
         
-        # Input: Select number of rows to display
-        # ... (other inputs)
         
-        # Horizontal line
         tags$hr(),
         
         # Input: Checkbox if file has header ----
@@ -44,9 +40,11 @@ generateImportDataUI <- function() {
         radioButtons("disp", "Display",
                      choices = c(Head = "head",
                                  All = "all"),
-                     selected = "head")
+                     selected = "head"),
+     
+        # Button to load default data
+        actionButton("load_default_data", "Load Default Data")
       ),
-      
       # Main panel for displaying outputs
       mainPanel(
         # Output: Data file
@@ -57,8 +55,13 @@ generateImportDataUI <- function() {
     # Additional sidebar panel for filtering data
     sidebarPanel(
       h3("Filtering data"),
+      
       # Input: Exclude columns
       textInput("exclude_cols", "Exclude columns (comma-separated)", ""),
+      
+      # Input: Exclude rows
+      textInput("exclude_rows", "Exclude rows (comma-separated or range)", ""),
+      
       # Run button
       actionButton("run_filter", "Run")
     )
