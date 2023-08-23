@@ -1,7 +1,6 @@
 server_import_data <- function(input, output, session) {
   
-  ##### Data ####
-  
+
   df <- reactiveVal(default_df)
   
   # Input: Button for choosing default data
@@ -21,6 +20,22 @@ server_import_data <- function(input, output, session) {
                 quote = input$quote))
   })
   
+  observeEvent(input$run_filter, {
+    req(df())
+    
+    # Excluding columns
+    excluded_cols <- unlist(strsplit(input$exclude_cols, ","))
+    excluded_cols <- trimws(excluded_cols)
+    
+    if (!is.null(excluded_cols) && length(excluded_cols) > 0 && any(excluded_cols != "")) {
+      df_filtered <- df() %>%
+        select(-any_of(trimws(excluded_cols)))  # Trim whitespace around column names
+      df(df_filtered)
+    
+    }
+  })
+  
+  
   output$contents <- renderTable({
     req(df())
     
@@ -30,5 +45,5 @@ server_import_data <- function(input, output, session) {
       return(df())
     }
   })
-
+  
 }

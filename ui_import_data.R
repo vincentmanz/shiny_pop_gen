@@ -1,10 +1,9 @@
-# Load default data from a URL
-default_df <- readr::read_tsv("https://www.t-de-meeus.fr/Enseign/BoophilusAdultsDataCattle.txt")
 generateImportDataUI <- function() {
   fluidPage(
     # Box title
     titlePanel("Uploading Files"),
-    # Sidebar panel for file input
+    
+    # Sidebar layout
     sidebarLayout(
       sidebarPanel(
         # Input: Select a file
@@ -13,6 +12,11 @@ generateImportDataUI <- function() {
                   accept = c("text/csv",
                              "text/comma-separated-values,text/plain",
                              ".csv")),
+        # ... (other inputs)
+        
+        # Input: Select number of rows to display
+        # ... (other inputs)
+        
         # Horizontal line
         tags$hr(),
         
@@ -42,13 +46,21 @@ generateImportDataUI <- function() {
                                  All = "all"),
                      selected = "head")
       ),
-      # Main panel for displaying outputs ----
+      
+      # Main panel for displaying outputs
       mainPanel(
-        
-        # Output: Data file ----
+        # Output: Data file
         tableOutput("contents")
-        
       )
+    ),
+    
+    # Additional sidebar panel for filtering data
+    sidebarPanel(
+      h3("Filtering data"),
+      # Input: Exclude columns
+      textInput("exclude_cols", "Exclude columns (comma-separated)", ""),
+      # Run button
+      actionButton("run_filter", "Run")
     )
   )
 }
