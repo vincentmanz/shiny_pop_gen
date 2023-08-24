@@ -52,12 +52,6 @@ generateImportDataUI <- function() {
         
         # Horizontal line ----
         tags$hr(),
-        
-        # Input: Select number of rows to display ----
-        radioButtons("disp", "Display",
-                     choices = c(Head = "head",
-                                 All = "all"),
-                     selected = "head"),
      
         # Button to load default data
         actionButton("load_default_data", "Load Default Data")

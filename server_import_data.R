@@ -2,10 +2,10 @@ default_df <- readr::read_tsv("https://www.t-de-meeus.fr/Enseign/BoophilusAdults
 
 server_import_data <- function(input, output, session) {
   
-
+  # Define the reactive expression to hold the data frame
   df <- reactiveVal(default_df)
   
-  ## Input: Button for loading default data
+  # Load default data when the button is clicked
   observeEvent(input$load_default_data, {
     df(read.csv("https://www.t-de-meeus.fr/Enseign/BoophilusAdultsDataCattle.txt",
                 header = input$header,
@@ -13,7 +13,7 @@ server_import_data <- function(input, output, session) {
                 quote = input$quote))
   })
   
-  # Input: File upload
+  # Handle file upload
   observeEvent(input$file1, {
     req(input$file1)
     df(read.csv(input$file1$datapath,
@@ -22,6 +22,7 @@ server_import_data <- function(input, output, session) {
                 quote = input$quote))
   })
   
+  # Handle filtering of data
   observeEvent(input$run_filter, {
     req(df())
     
@@ -45,15 +46,9 @@ server_import_data <- function(input, output, session) {
     }
   })
   
-  
+  # Display the first 20 rows of the dataframe
   output$contents <- renderTable({
     req(df())
-    
-    if (input$disp == "head") {
-      return(head(df()))
-    } else {
-      return(df())
-    }
+    head(df(), n = 15)
   })
-  
 }
