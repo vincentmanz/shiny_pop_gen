@@ -1,3 +1,5 @@
+# ui_import_data.R
+
 tags$head(
   tags$style(
     HTML(
@@ -14,7 +16,6 @@ tags$head(
   )
 )
 
-
 generateImportDataUI <- function() {
   fluidPage(
     # Box title
@@ -29,7 +30,6 @@ generateImportDataUI <- function() {
                   accept = c("text/csv",
                              "text/comma-separated-values,text/plain",
                              ".csv")),
-        
         
         tags$hr(),
         
@@ -52,7 +52,7 @@ generateImportDataUI <- function() {
         
         # Horizontal line ----
         tags$hr(),
-     
+        
         # Button to load default data
         actionButton("load_default_data", "Load Default Data")
       ),
@@ -76,6 +76,27 @@ generateImportDataUI <- function() {
       
       # Run button
       actionButton("run_filter", "Run")
+    ),
+    
+    # Additional sidebar panel for assigning data
+    sidebarPanel(
+      h3("Assign data"),
+      class = "fixed-filtering-data",
+      
+      # Input: Population
+      selectInput("pop_data", "Population", choices = NULL),
+      
+      # Input: Latitude (Dropdown Menu)
+      selectInput("latitude_data", "Latitude", choices = NULL),
+      
+      # Input: Longitude (Dropdown Menu)
+      selectInput("longitude_data", "Longitude", choices = NULL),
+      
+      # Input: Markers (range)
+      textInput("col_ranges_data", "Select Genotypes (e.g., 1-4, 5:10)"),
+      
+      # Run button for Assign data
+      actionButton("run_assign", "Run Assign Data")
     )
   )
 }
