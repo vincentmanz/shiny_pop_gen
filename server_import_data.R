@@ -62,105 +62,160 @@ server_import_data <- function(input, output, session) {
     updateSelectInput(session, 'latitude_data', choices = c("select" = "", colnames(df_local)))
     updateSelectInput(session, 'longitude_data', choices = c("select" = "", colnames(df_local)))
   })
-  # Assign data logic
+  
+  # Create a reactiveValues object to store the results
+  result_data <- reactiveValues(
+    number_pop = 0,
+    number_indv = 0,
+    number_marker = 0,
+    number_missing = 0,
+    number_missing_per = 0
+  )
+  
+  # Create the table and the map
   observeEvent(input$run_assign, {
     req(input$pop_data, input$latitude_data, input$longitude_data, input$col_ranges_data, df())
     df_local <- df()
+    
+    # Check if Population has data
     if (input$pop_data == "") {
-      print("You need to select populations")
-    } else if (input$col_ranges_data == "") {
-      print("You need to select a marker range")
-    } else {
-      latitude_data <- tryCatch(as.numeric(input$latitude_data), error = function(e) NA)
-      longitude_data <- tryCatch(as.numeric(input$longitude_data), error = function(e) NA)
-      # Remove spaces from latitude and longitude
-      latitude_data <- gsub(" ", "", input$latitude_data)
-      longitude_data <- gsub(" ", "", input$longitude_data)
-      
-      # Check if latitude and longitude are not characters
-      if (!is.na(as.numeric(latitude_data)) && !is.na(as.numeric(longitude_data))) {
-        print("Latitude and longitude should be numerical, select another column or check your data")
-        
-        
-        
-        
-      } else {
-        
-        # Convert marker range to numeric
-        range_data <- input$col_ranges_data
-        range_values <- unlist(strsplit(range_data, "[:-]"))
-        range_values <- as.numeric(range_values)
-        # Extract the range of column headers
-        column_range_name <- colnames(df_local)[range_values[1]:range_values[2]]
-        # Filter columns to keep in the new data frame
-        cols_to_keep <- c(input$pop_data, input$latitude_data, input$longitude_data, column_range_name)
-        new_df <- df_local[, cols_to_keep]
-        
-        
-        
-        
-        # Rename columns
-        col_names <- colnames(new_df)
-        col_names[2] <- "Latitude"
-        col_names[3] <- "Longitude"
-        col_names[4:(3 + length(column_range_name))] <- column_range_name
-        colnames(new_df) <- col_names
-        
-        
-        ## chatGPT:  here, 
-        
-        ## 1. Convert latitude and longitude to numeric if possible and also if there is a , replace it by a .
-        ## 2. Convert the Polation column in Character type not numerical. 
-        
-        # Convert latitude and longitude to numeric if possible
-        if (!is.na(latitude_data)) {
-          latitude_data <- as.numeric(gsub(",", ".", gsub(" ", "", input$latitude_data)))
-        }
-        if (!is.na(longitude_data)) {
-          longitude_data <- as.numeric(gsub(",", ".", gsub(" ", "", input$longitude_data)))
-        }
-        # Convert selected columns to numeric
-        cols_to_convert <- col_names[which(col_names %in% c("Latitude", "Longitude", col_names[4:(3 + length(range_values))]))]
-        new_df[, cols_to_convert] <- apply(new_df[, cols_to_convert], 2, as.numeric)
- 
-        # Update df_assigned
-        df(new_df)
-        
-        ### General stats###
-        range_cols <- colnames(new_df)[4:(3 + length(range_values))]
-
-        # Calculate the number of rows and assign it to a variable 'number_indv'
-        number_indv <- nrow(new_df)
-
-        # Count missing data in the range col_ranges_data
-        range_missing <- sum(
-          is.na(new_df[, 4:(3 + length(range_values))]) |
-            new_df[, 4:(3 + length(range_values))] == 0 |
-            tolower(new_df[, 4:(3 + length(range_values))]) == "na" |
-            tolower(new_df[, 4:(3 + length(range_values))]) == 000 |
-            tolower(new_df[, 4:(3 + length(range_values))]) == ""
-        )
-        
-        number_missing_per <- (range_missing / length(range_cols)) * 100
-        
-        print(paste("Percentage of missing data:", number_missing_per))
-        
-        # Count the number of unique values in pop_data
-        number_pop <- length(unique(new_df[[input$pop_data]]))
-        print("1")
-        
-        # Count the number of selected columns in col_ranges_data
-        number_marker <- length(range_values)
-        print("2")
-        
-        # Print the results
-        print(paste("Number of Population:", number_pop))
-        print(paste("Number of individuals:", number_indv))
-        print(paste("Number of marker:", number_marker))
-        print(paste("Number of missing data:", range_missing))
-        print(paste("Percentage of missing data:", number_missing_per))
-      }
+      shinyalert(title = "Error", text = "You need to select populations.", type = "error")
+      return()  # Exit the event handler
+    } 
+    
+    # Check if Marker Range has data
+    if (input$col_ranges_data == "") {
+      shinyalert(title = "Error", text = "You need to select a marker range.", type = "error")
+      return()  # Exit the event handler
     }
+
+    # Check if latitude is not numeric
+    if (is.numeric(input$latitude_data)) {
+      shinyalert(title = "Error", text = "Latitude should be numerical, select another column or check your data.", type = "error")
+      return()  # Exit the event handler
+    }
+    if (is.numeric(input$longitude_data)) {
+      shinyalert(title = "Error", text = "Longitude should be numerical, select another column or check your data.", type = "error")
+      return()  # Exit the event handler
+    }
+    # Check if the range is valid
+    range_values <- unlist(strsplit(input$col_ranges_data, "[:-]"))
+    range_values <- as.numeric(range_values)
+    
+    if (any(is.na(range_values)) || range_values[1] < 1 || range_values[2] > length(colnames(df_local))) {
+      shinyalert(title = "Error", text = "Try again, your range is out of bounds.", type = "error")
+      return()  # Exit the event handler
+    }
+    
+    # Convert marker range to numeric
+    range_data <- input$col_ranges_data
+    range_values <- unlist(strsplit(range_data, "[:-]"))
+    range_values <- as.numeric(range_values)
+    
+    # Extract the range of column headers
+    column_range_name <- colnames(df_local)[range_values[1]:range_values[2]]
+    
+    # Filter columns to keep in the new data frame
+    cols_to_keep <- c(input$pop_data, input$latitude_data, input$longitude_data, column_range_name)
+    new_df <- df_local[, cols_to_keep]
+    
+    # Rename columns
+    col_names <- colnames(new_df)
+    col_names[2] <- "Latitude"
+    col_names[3] <- "Longitude"
+    col_names[4:(3 + length(column_range_name))] <- column_range_name
+    colnames(new_df) <- col_names
+    
+    # Convert selected columns to numeric
+    cols_to_convert <- col_names[which(col_names %in% c("Latitude", "Longitude", col_names[4:(3 + length(range_values))]))]
+    new_df[, cols_to_convert] <- apply(new_df[, cols_to_convert], 2, as.numeric)
+    
+    # Update df_assigned
+    df(new_df)
+    
+    ### General stats###
+    range_cols <- colnames(new_df)[4:(3 + length(range_values))]
+    
+    # Calculate the number of rows and assign it to a variable 'number_indv'
+    number_indv <- nrow(new_df)
+    
+    # Count missing data in the range col_ranges_data
+    number_missing <- sum(
+      is.na(new_df[, 4:(3 + length(range_values))]) |
+        new_df[, 4:(3 + length(range_values))] == 0 |
+        tolower(new_df[, 4:(3 + length(range_values))]) == "na" |
+        tolower(new_df[, 4:(3 + length(range_values))]) == 000 |
+        tolower(new_df[, 4:(3 + length(range_values))]) == ""
+    )
+    
+    number_missing_per <- (number_missing / length(range_cols)) * 100
+    
+    # Count the number of unique values in pop_data
+    number_pop <- length(unique(new_df[[input$pop_data]]))
+
+    # Count the number of selected columns in col_ranges_data
+    number_marker <- length(range_values)
+
+    # Print the results
+    print(paste("Number of Population:", number_pop))
+    print(paste("Number of individuals:", number_indv))
+    print(paste("Number of marker:", number_marker))
+    print(paste("Number of missing data:", number_missing))
+    print(paste("Percentage of missing data:", number_missing_per))
+    
+    # Create a data frame for the missing info
+    results_table <- data.frame(
+      "Number of Population:" = number_pop,
+      "Number of individuals:" = number_indv,
+      "Number of marker:" = number_marker,
+      "Number of missing data:" = number_missing,
+      "Percentage of missing data:" = number_missing_per
+    )
+    
+    # Update result_data with the calculated values
+    result_data$number_pop <- number_pop
+    result_data$number_indv <- number_indv
+    result_data$number_marker <- number_marker
+    result_data$number_missing <- number_missing
+    result_data$number_missing_per <- number_missing_per
+    
+    # Render the results table using renderUI
+    output$results_table_ui <- renderUI({
+      tableOutput("results_table")
+    })
+    
+    # Render the actual results table
+    output$results_table <- renderTable({
+      results_table
+    })
+    
+    
+    ##### MAP ####
+    
+    # Create the populationsLL data frame
+    populationsLL <- new_df[,1:3]
+    print(populationsLL)
+    
+    # Group by Locality, Latitude, and Longitude, and calculate Population Size
+    populationsLL_grouped <- populationsLL %>%
+      group_by_all()%>%count()
+    colnames(populationsLL_grouped) <- c('Population', 'Longitude', 'Latitude', 'Population size')
+    
+    # Render the populationsLL_uniq data frame as a table
+    output$populationsLL_uniq_table <- renderTable({
+      req(input$run_map)  # Show the table after clicking "Run Map" button
+      populationsLL_grouped
+    })
+    # Render the map
+    output$map <- renderLeaflet({
+      leaflet(populationsLL_grouped) %>%
+        addTiles() %>%
+        addCircles(lng = populationsLL_grouped$Latitude, lat = populationsLL_grouped$Longitude, 
+                   popup=paste("Location:", populationsLL_grouped$Population, "<br>","Population size:", populationsLL_grouped$`Population size`), 
+                   radius = populationsLL_grouped$`Population size` * 50,
+                   stroke = FALSE, fillOpacity = 0.5)
+    })
   })
+  
   
 }

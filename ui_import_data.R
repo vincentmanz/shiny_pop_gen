@@ -59,7 +59,11 @@ generateImportDataUI <- function() {
       # Main panel for displaying outputs
       mainPanel(
         # Output: Data file
-        tableOutput("contents")
+        tableOutput("contents"),
+        tableOutput("results_table"),
+        tableOutput("populationsLL_uniq_table"),
+        leafletOutput("map") 
+        
       )
     ),
     
@@ -97,6 +101,7 @@ generateImportDataUI <- function() {
       
       # Run button for Assign data
       actionButton("run_assign", "Run Assign Data")
-    )
+    
+      )
   )
 }
