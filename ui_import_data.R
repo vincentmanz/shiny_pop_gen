@@ -1,6 +1,6 @@
 # ui_import_data.R
 
-generateImportDataUI <- function() {
+generateImportDataUI <- function(result_data) {
   fluidPage(
     # Box title
     titlePanel("Import Data"),
@@ -69,16 +69,26 @@ generateImportDataUI <- function() {
                
                actionButton("run_assign", "Run Assign Data")
              )
-      )
-    ),
+             )
+      ),
     
     fluidRow(
       column(12,
              # Main panel for displaying outputs
              mainPanel(
-               tableOutput("contents"),
+               # Display the infoBoxes for the calculated values
+               infoBox("Number of Population:", result_data$number_pop),
+               infoBox("Number of individuals:", result_data$number_indv),
+               infoBox("Number of marker:", result_data$number_marker),
+               infoBox("Number of missing data:", result_data$number_missing),
+               infoBox("Percentage of missing data:", result_data$number_missing_per),
+               
+               tableOutput("results_table"),
+               tableOutput("contents"),  # Display df
+               tableOutput("df_local"),   # Display df_local
+               
                tableOutput("populationsLL_uniq_table"),
-               leafletOutput("map") 
+               leafletOutput("map")
              )
       )
     )

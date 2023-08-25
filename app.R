@@ -1,3 +1,5 @@
+# app.R 
+
 library(shiny)
 library(shinythemes)
 library(leaflet)
@@ -19,6 +21,16 @@ shiny.react::enableReactDebugMode()
 linebreaks <- function(n) {
   HTML(strrep(br(), n))
 }
+
+# Create the result_data reactiveValues object
+result_data <- reactiveValues(
+  number_pop = 0,
+  number_indv = 0,
+  number_marker = 0,
+  number_missing = 0,
+  number_missing_per = 0
+)
+
 
 ## dashboard version
 header <- dashboardHeader(title = "GenoPop")
@@ -52,7 +64,7 @@ body <- dashboardBody(
     ),
     tabItem(
       tabName = "data",
-      generateImportDataUI(),
+      generateImportDataUI(result_data),  # Pass result_data to the function
       icon = icon("cog", lib = "glyphicon")
     ),
     tabItem(
@@ -67,12 +79,12 @@ ui <- dashboardPage(
   skin = "midnight",
   header = header,
   sidebar = sidebar,
-  body = body
+  body = body(result_data)  # Pass result_data to the body function
 )
 
 server <- function(input, output, session) {
   # Combine server functions from other source files
-  server_import_data(input, output, session)
+  server_import_data(input, output, session, result_data)
   server_genetic_drift(input, output, session)
 }
 
