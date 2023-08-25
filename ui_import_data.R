@@ -71,12 +71,12 @@ generateImportDataUI <- function() {
              )
       )
     ),
+    
     fluidRow(
       column(12,
              # Main panel for displaying outputs
              mainPanel(
                tableOutput("contents"),
-               tableOutput("results_table"),
                tableOutput("populationsLL_uniq_table"),
                leafletOutput("map") 
              )
