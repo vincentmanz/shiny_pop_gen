@@ -78,6 +78,11 @@ generateImportDataUI <- function() {
              mainPanel(
                tableOutput("contents"),
                tableOutput("populationsLL_uniq_table"),
+               #infoBox("New Orders", 10 * 2, icon = icon("credit-card"), fill = TRUE),
+               infoBoxOutput("box_population"),
+               infoBoxOutput("box_individuals"),
+               infoBoxOutput("box_marker"),
+               infoBoxOutput("box_number_missing_per"),
                leafletOutput("map") 
              )
       )

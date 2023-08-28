@@ -189,6 +189,32 @@ server_import_data <- function(input, output, session) {
       results_table
     })
     
+    # Infobox
+    output$box_population <- renderInfoBox({
+      infoBox(
+        "Population", number_pop, icon = icon("map-location-dot"),
+        color = "purple", fill = TRUE
+      )
+    })
+    output$box_individuals <- renderInfoBox({
+      infoBox(
+        "Individuals", number_indv, icon = icon("people-group"),
+        color = "green", fill = TRUE
+      )
+    })
+    output$box_marker <- renderInfoBox({
+      infoBox(
+        "Marker", number_marker, icon = icon("dna"),
+        color = "blue", fill = TRUE
+      )
+    })
+    output$box_number_missing_per <- renderInfoBox({
+      infoBox(
+        "Percentage of missing data", number_missing_per, icon = icon("database"),
+        color = "yellow", fill = TRUE
+      )
+    })
+    
     
     ##### MAP ####
     
