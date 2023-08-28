@@ -3,13 +3,12 @@
 generateImportDataUI <- function() {
   fluidPage(
     # Box title
-    titlePanel("Import Data"),
-    
     fluidRow(
       column(4,
              # Sidebar panel for uploading files
              sidebarPanel(
                width = 12,
+               h3("Import Data"),
                fileInput("file1", "Choose CSV File",
                          multiple = TRUE,
                          accept = c("text/csv",
@@ -69,7 +68,7 @@ generateImportDataUI <- function() {
                
                actionButton("run_assign", "Run Assign Data"),
               
-               h6("* mandatory informations")
+               h6("* mandatory fields")
                
              )
       )

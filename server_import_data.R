@@ -115,133 +115,234 @@ server_import_data <- function(input, output, session) {
     # Extract the range of column headers
     column_range_name <- colnames(df_local)[range_values[1]:range_values[2]]
     
-    # Filter columns to keep in the new data frame
-    cols_to_keep <- c(input$pop_data, input$latitude_data, input$longitude_data, column_range_name)
-    new_df <- df_local[, cols_to_keep]
+    # Determine if Latitude and Longitude are empty
+    latitude_empty <- input$latitude_data == ""
+    longitude_empty <- input$longitude_data == ""
     
-    # Rename columns
-    col_names <- colnames(new_df)
-    col_names[2] <- "Latitude"
-    col_names[3] <- "Longitude"
-    col_names[4:(3 + length(column_range_name))] <- column_range_name
-    colnames(new_df) <- col_names
-    
-    # Convert selected columns to numeric
-    cols_to_convert <- col_names[which(col_names %in% c("Latitude", "Longitude", col_names[4:(3 + length(range_values))]))]
-    new_df[, cols_to_convert] <- apply(new_df[, cols_to_convert], 2, as.numeric)
-    
-    # Update df_assigned
-    df(new_df)
-    
-    ### General stats###
-    range_cols <- colnames(new_df)[4:(3 + length(range_values))]
-    
-    # Calculate the number of rows and assign it to a variable 'number_indv'
-    number_indv <- nrow(new_df)
-    
-    # Count missing data in the range col_ranges_data
-    number_missing <- sum(
-      is.na(new_df[, 4:(3 + length(range_values))]) |
-        new_df[, 4:(3 + length(range_values))] == 0 |
-        tolower(new_df[, 4:(3 + length(range_values))]) == "na" |
-        tolower(new_df[, 4:(3 + length(range_values))]) == 000 |
-        tolower(new_df[, 4:(3 + length(range_values))]) == ""
-    )
-    
-    number_missing_per <- (number_missing / length(range_cols)) * 100
-    
-    # Count the number of unique values in pop_data
-    number_pop <- length(unique(new_df[[input$pop_data]]))
-
-    # Count the number of selected columns in col_ranges_data
-    number_marker <- length(range_values)
-
-    # Print the results
-    print(paste("Number of Population:", number_pop))
-    print(paste("Number of individuals:", number_indv))
-    print(paste("Number of marker:", number_marker))
-    print(paste("Number of missing data:", number_missing))
-    print(paste("Percentage of missing data:", number_missing_per))
-    
-    # Create a data frame for the missing info
-    results_table <- data.frame(
-      "Number of Population:" = number_pop,
-      "Number of individuals:" = number_indv,
-      "Number of marker:" = number_marker,
-      "Number of missing data:" = number_missing,
-      "Percentage of missing data:" = number_missing_per
-    )
-    
-    # Update result_data with the calculated values
-    result_data$number_pop <- number_pop
-    result_data$number_indv <- number_indv
-    result_data$number_marker <- number_marker
-    result_data$number_missing <- number_missing
-    result_data$number_missing_per <- number_missing_per
-    
-    # Render the results table using renderUI
-    output$results_table_ui <- renderUI({
-      tableOutput("results_table")
-    })
-    
-    # Render the actual results table
-    output$results_table <- renderTable({
-      results_table
-    })
-    
-    # Infobox
-    output$box_population <- renderInfoBox({
-      infoBox(
-        "Population", number_pop, icon = icon("map-location-dot"),
-        color = "purple", fill = TRUE
+    if (latitude_empty && longitude_empty) {
+      
+      # Filter columns to keep in the new data frame
+      cols_to_keep <- c(input$pop_data, column_range_name)
+      new_df <- df_local[, cols_to_keep]
+      
+      # Rename columns
+      col_names <- colnames(new_df)
+      col_names[4:(3 + length(column_range_name))] <- column_range_name
+      colnames(new_df) <- col_names
+      
+      # Update df_assigned
+      df(new_df)
+      
+      ### General stats###
+      range_cols <- colnames(new_df)[4:(3 + length(range_values))]
+      
+      # Calculate the number of rows and assign it to a variable 'number_indv'
+      number_indv <- nrow(new_df)
+      
+      # Count missing data in the range col_ranges_data
+      number_missing <- sum(
+        is.na(new_df[, 4:(3 + length(range_values))]) |
+          new_df[, 4:(3 + length(range_values))] == 0 |
+          tolower(new_df[, 4:(3 + length(range_values))]) == "na" |
+          tolower(new_df[, 4:(3 + length(range_values))]) == 000 |
+          tolower(new_df[, 4:(3 + length(range_values))]) == ""
       )
-    })
-    output$box_individuals <- renderInfoBox({
-      infoBox(
-        "Individuals", number_indv, icon = icon("people-group"),
-        color = "green", fill = TRUE
+      
+      number_missing_per <- (number_missing / length(range_cols)) * 100
+      
+      # Count the number of unique values in pop_data
+      number_pop <- length(unique(new_df[[input$pop_data]]))
+      
+      # Count the number of selected columns in col_ranges_data
+      number_marker <- length(range_values)
+      
+      # Print the results
+      print(paste("Number of Population:", number_pop))
+      print(paste("Number of individuals:", number_indv))
+      print(paste("Number of marker:", number_marker))
+      print(paste("Number of missing data:", number_missing))
+      print(paste("Percentage of missing data:", number_missing_per))
+      
+      # Create a data frame for the missing info
+      results_table <- data.frame(
+        "Number of Population:" = number_pop,
+        "Number of individuals:" = number_indv,
+        "Number of marker:" = number_marker,
+        "Number of missing data:" = number_missing,
+        "Percentage of missing data:" = number_missing_per
       )
-    })
-    output$box_marker <- renderInfoBox({
-      infoBox(
-        "Marker", number_marker, icon = icon("dna"),
-        color = "blue", fill = TRUE
+      
+      # Update result_data with the calculated values
+      result_data$number_pop <- number_pop
+      result_data$number_indv <- number_indv
+      result_data$number_marker <- number_marker
+      result_data$number_missing <- number_missing
+      result_data$number_missing_per <- number_missing_per
+      
+      # Render the results table using renderUI
+      output$results_table_ui <- renderUI({
+        tableOutput("results_table")
+      })
+      
+      # Render the actual results table
+      output$results_table <- renderTable({
+        results_table
+      })
+      
+      # Infobox
+      output$box_population <- renderInfoBox({
+        infoBox(
+          "Population", number_pop, icon = icon("map-location-dot"),
+          color = "purple", fill = TRUE
+        )
+      })
+      output$box_individuals <- renderInfoBox({
+        infoBox(
+          "Individuals", number_indv, icon = icon("people-group"),
+          color = "green", fill = TRUE
+        )
+      })
+      output$box_marker <- renderInfoBox({
+        infoBox(
+          "Marker", number_marker, icon = icon("dna"),
+          color = "blue", fill = TRUE
+        )
+      })
+      output$box_number_missing_per <- renderInfoBox({
+        infoBox(
+          "Percentage of missing data", number_missing_per, icon = icon("database"),
+          color = "yellow", fill = TRUE
+        )
+      })
+      
+      
+    } else {
+      
+      # Filter columns to keep in the new data frame
+      cols_to_keep <- c(input$pop_data, input$latitude_data, input$longitude_data, column_range_name)
+      new_df <- df_local[, cols_to_keep]
+      
+      # Rename columns
+      col_names <- colnames(new_df)
+      col_names[2] <- "Latitude"
+      col_names[3] <- "Longitude"
+      col_names[4:(3 + length(column_range_name))] <- column_range_name
+      colnames(new_df) <- col_names
+      
+      # Convert selected columns to numeric
+      cols_to_convert <- col_names[which(col_names %in% c("Latitude", "Longitude", col_names[4:(3 + length(range_values))]))]
+      new_df[, cols_to_convert] <- apply(new_df[, cols_to_convert], 2, as.numeric)
+      
+      # Update df_assigned
+      df(new_df)
+      
+      ### General stats###
+      range_cols <- colnames(new_df)[4:(3 + length(range_values))]
+      
+      # Calculate the number of rows and assign it to a variable 'number_indv'
+      number_indv <- nrow(new_df)
+      
+      # Count missing data in the range col_ranges_data
+      number_missing <- sum(
+        is.na(new_df[, 4:(3 + length(range_values))]) |
+          new_df[, 4:(3 + length(range_values))] == 0 |
+          tolower(new_df[, 4:(3 + length(range_values))]) == "na" |
+          tolower(new_df[, 4:(3 + length(range_values))]) == 000 |
+          tolower(new_df[, 4:(3 + length(range_values))]) == ""
       )
-    })
-    output$box_number_missing_per <- renderInfoBox({
-      infoBox(
-        "Percentage of missing data", number_missing_per, icon = icon("database"),
-        color = "yellow", fill = TRUE
+      
+      number_missing_per <- (number_missing / length(range_cols)) * 100
+      
+      # Count the number of unique values in pop_data
+      number_pop <- length(unique(new_df[[input$pop_data]]))
+      
+      # Count the number of selected columns in col_ranges_data
+      number_marker <- length(range_values)
+      
+      # Print the results
+      print(paste("Number of Population:", number_pop))
+      print(paste("Number of individuals:", number_indv))
+      print(paste("Number of marker:", number_marker))
+      print(paste("Number of missing data:", number_missing))
+      print(paste("Percentage of missing data:", number_missing_per))
+      
+      # Create a data frame for the missing info
+      results_table <- data.frame(
+        "Number of Population:" = number_pop,
+        "Number of individuals:" = number_indv,
+        "Number of marker:" = number_marker,
+        "Number of missing data:" = number_missing,
+        "Percentage of missing data:" = number_missing_per
       )
-    })
-    
-    
-    ##### MAP ####
-    
-    # Create the populationsLL data frame
-    populationsLL <- new_df[,1:3]
-    print(populationsLL)
-    
-    # Group by Locality, Latitude, and Longitude, and calculate Population Size
-    populationsLL_grouped <- populationsLL %>%
-      group_by_all()%>%count()
-    colnames(populationsLL_grouped) <- c('Population', 'Longitude', 'Latitude', 'Population size')
-    
-    # Render the populationsLL_uniq data frame as a table
-    output$populationsLL_uniq_table <- renderTable({
-      req(input$run_map)  # Show the table after clicking "Run Map" button
-      populationsLL_grouped
-    })
-    # Render the map
-    output$map <- renderLeaflet({
-      leaflet(populationsLL_grouped) %>%
-        addTiles() %>%
-        addCircles(lng = populationsLL_grouped$Latitude, lat = populationsLL_grouped$Longitude, 
-                   popup=paste("Location:", populationsLL_grouped$Population, "<br>","Population size:", populationsLL_grouped$`Population size`), 
-                   radius = populationsLL_grouped$`Population size` * 50,
-                   stroke = FALSE, fillOpacity = 0.5)
-    })
+      
+      # Update result_data with the calculated values
+      result_data$number_pop <- number_pop
+      result_data$number_indv <- number_indv
+      result_data$number_marker <- number_marker
+      result_data$number_missing <- number_missing
+      result_data$number_missing_per <- number_missing_per
+      
+      # Render the results table using renderUI
+      output$results_table_ui <- renderUI({
+        tableOutput("results_table")
+      })
+      
+      # Render the actual results table
+      output$results_table <- renderTable({
+        results_table
+      })
+      
+      # Infobox
+      output$box_population <- renderInfoBox({
+        infoBox(
+          "Population", number_pop, icon = icon("map-location-dot"),
+          color = "purple", fill = TRUE
+        )
+      })
+      output$box_individuals <- renderInfoBox({
+        infoBox(
+          "Individuals", number_indv, icon = icon("people-group"),
+          color = "green", fill = TRUE
+        )
+      })
+      output$box_marker <- renderInfoBox({
+        infoBox(
+          "Marker", number_marker, icon = icon("dna"),
+          color = "blue", fill = TRUE
+        )
+      })
+      output$box_number_missing_per <- renderInfoBox({
+        infoBox(
+          "Percentage of missing data", number_missing_per, icon = icon("database"),
+          color = "yellow", fill = TRUE
+        )
+      })
+      
+      ##### MAP ####
+      
+      # Create the populationsLL data frame
+      populationsLL <- new_df[,1:3]
+      print(populationsLL)
+      
+      # Group by Locality, Latitude, and Longitude, and calculate Population Size
+      populationsLL_grouped <- populationsLL %>%
+        group_by_all()%>%count()
+      colnames(populationsLL_grouped) <- c('Population', 'Longitude', 'Latitude', 'Population size')
+      
+      # Render the populationsLL_uniq data frame as a table
+      output$populationsLL_uniq_table <- renderTable({
+        req(input$run_map)  # Show the table after clicking "Run Map" button
+        populationsLL_grouped
+      })
+      # Render the map
+      output$map <- renderLeaflet({
+        leaflet(populationsLL_grouped) %>%
+          addTiles() %>%
+          addCircles(lng = populationsLL_grouped$Latitude, lat = populationsLL_grouped$Longitude, 
+                     popup=paste("Location:", populationsLL_grouped$Population, "<br>","Population size:", populationsLL_grouped$`Population size`), 
+                     radius = populationsLL_grouped$`Population size` * 50,
+                     stroke = FALSE, fillOpacity = 0.5)
+      })
+    }
   })
-  
-  
 }
