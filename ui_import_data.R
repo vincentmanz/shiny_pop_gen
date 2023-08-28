@@ -59,15 +59,18 @@ generateImportDataUI <- function() {
                class = "fixed-filtering-data",
                position = "right",
                
-               selectInput("pop_data", "Population", choices = NULL),
+               selectInput("pop_data", "Population*", choices = NULL),
                
                selectInput("latitude_data", "Latitude", choices = NULL),
                
                selectInput("longitude_data", "Longitude", choices = NULL),
                
-               textInput("col_ranges_data", "Select Genotypes (e.g., 1-4, 5:10)"),
+               textInput("col_ranges_data", "Select Genotypes* (e.g., 1-4 or 5:10)"),
                
-               actionButton("run_assign", "Run Assign Data")
+               actionButton("run_assign", "Run Assign Data"),
+              
+               h6("* mandatory informations")
+               
              )
       )
     ),
@@ -78,11 +81,10 @@ generateImportDataUI <- function() {
              mainPanel(
                tableOutput("contents"),
                tableOutput("populationsLL_uniq_table"),
-               #infoBox("New Orders", 10 * 2, icon = icon("credit-card"), fill = TRUE),
-               infoBoxOutput("box_population"),
-               infoBoxOutput("box_individuals"),
-               infoBoxOutput("box_marker"),
-               infoBoxOutput("box_number_missing_per"),
+               infoBoxOutput("box_population", width=3),
+               infoBoxOutput("box_individuals", width=3),
+               infoBoxOutput("box_marker", width=3),
+               infoBoxOutput("box_number_missing_per", width=3),
                leafletOutput("map") 
              )
       )
