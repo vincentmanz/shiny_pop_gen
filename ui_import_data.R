@@ -14,7 +14,6 @@ generateImportDataUI <- function() {
                          accept = c("text/csv",
                                     "text/comma-separated-values,text/plain",
                                     ".csv")),
-               
                tags$hr(),
                
                checkboxInput("header", "Header", TRUE),
@@ -24,12 +23,16 @@ generateImportDataUI <- function() {
                                         Semicolon = ";",
                                         Tab = "\t"),
                             selected = "\t"),
+
                
-               radioButtons("quote", "Quote",
-                            choices = c(None = "",
-                                        "Double Quote" = '"',
-                                        "Single Quote" = "'"),
-                            selected = ''),
+               numericInput( "ploidy", "Ploidy", 2, min = 2, max = 8, step = 2, width = NULL),
+               
+               radioButtons("file_format", "File format",
+                            choices = c(microsat1 = "Microsatelite 1 colomn per allele",
+                                        microsat2 = "Microsatelite 1 colomn for the all the alleles"
+                                        ),
+                            selected = "Microsatelite 1 colomn per allele"),
+               textInput("missing_code", "Code for missing data", value=0),
                
                tags$hr(),
                

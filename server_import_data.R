@@ -23,7 +23,7 @@ server_import_data <- function(input, output, session) {
                 sep = input$sep,
                 quote = input$quote))
   })
-  
+  print("-2")
   # Handle filtering of data
   observeEvent(input$run_filter, {
     req(df())
@@ -71,33 +71,25 @@ server_import_data <- function(input, output, session) {
     number_missing = 0,
     number_missing_per = 0
   )
-  
+  print("-1")
   # Create the table and the map
   observeEvent(input$run_assign, {
     req(input$pop_data, input$latitude_data, input$longitude_data, input$col_ranges_data, df())
     df_local <- df()
+    
+    print("1")
     
     # Check if Population has data
     if (input$pop_data == "") {
       shinyalert(title = "Error", text = "You need to select populations.", type = "error")
       return()  # Exit the event handler
     } 
-    
     # Check if Marker Range has data
     if (input$col_ranges_data == "") {
       shinyalert(title = "Error", text = "You need to select a marker range.", type = "error")
       return()  # Exit the event handler
     }
-
-    # Check if latitude is not numeric
-    if (is.numeric(input$latitude_data)) {
-      shinyalert(title = "Error", text = "Latitude should be numerical, select another column or check your data.", type = "error")
-      return()  # Exit the event handler
-    }
-    if (is.numeric(input$longitude_data)) {
-      shinyalert(title = "Error", text = "Longitude should be numerical, select another column or check your data.", type = "error")
-      return()  # Exit the event handler
-    }
+    print("2")
     # Check if the range is valid
     range_values <- unlist(strsplit(input$col_ranges_data, "[:-]"))
     range_values <- as.numeric(range_values)
@@ -106,7 +98,7 @@ server_import_data <- function(input, output, session) {
       shinyalert(title = "Error", text = "Try again, your range is out of bounds.", type = "error")
       return()  # Exit the event handler
     }
-    
+    print("3")
     # Convert marker range to numeric
     range_data <- input$col_ranges_data
     range_values <- unlist(strsplit(range_data, "[:-]"))
@@ -120,6 +112,11 @@ server_import_data <- function(input, output, session) {
     longitude_empty <- input$longitude_data == ""
     
     if (latitude_empty && longitude_empty) {
+      
+      
+      
+      print("\n\n\n(latitude_empty && longitude_empty)\n\n\n")
+      
       
       # Filter columns to keep in the new data frame
       cols_to_keep <- c(input$pop_data, column_range_name)
@@ -189,6 +186,9 @@ server_import_data <- function(input, output, session) {
         results_table
       })
       
+      print("\n\n\n(results_table)\n\n\n")
+      
+      
       # Infobox
       output$box_population <- renderInfoBox({
         infoBox(
@@ -215,8 +215,20 @@ server_import_data <- function(input, output, session) {
         )
       })
       
+      print("\n\n\n(end if)\n\n\n")
+      
       
     } else {
+      
+      # Check if latitude is not numeric
+      if (is.numeric(input$latitude_data)) {
+        shinyalert(title = "Error", text = "Latitude should be numerical, select another column or check your data.", type = "error")
+        return()  # Exit the event handler
+      }
+      if (is.numeric(input$longitude_data)) {
+        shinyalert(title = "Error", text = "Longitude should be numerical, select another column or check your data.", type = "error")
+        return()  # Exit the event handler
+      }
       
       # Filter columns to keep in the new data frame
       cols_to_keep <- c(input$pop_data, input$latitude_data, input$longitude_data, column_range_name)
