@@ -3,19 +3,17 @@
 generateImportDataUI <- function() {
   fluidPage(
     # Box title
-    titlePanel("Import Data"),
-    
     fluidRow(
       column(4,
              # Sidebar panel for uploading files
              sidebarPanel(
                width = 12,
+               h3("Import Data"),
                fileInput("file1", "Choose CSV File",
                          multiple = TRUE,
                          accept = c("text/csv",
                                     "text/comma-separated-values,text/plain",
                                     ".csv")),
-               
                tags$hr(),
                
                checkboxInput("header", "Header", TRUE),
@@ -25,12 +23,16 @@ generateImportDataUI <- function() {
                                         Semicolon = ";",
                                         Tab = "\t"),
                             selected = "\t"),
+
                
-               radioButtons("quote", "Quote",
-                            choices = c(None = "",
-                                        "Double Quote" = '"',
-                                        "Single Quote" = "'"),
-                            selected = ''),
+               numericInput( "ploidy", "Ploidy", 2, min = 2, max = 8, step = 2, width = NULL),
+               
+               radioButtons("file_format", "File format",
+                            choices = c(microsat1 = "Microsatelite 1 colomn per allele",
+                                        microsat2 = "Microsatelite 1 colomn for the all the alleles"
+                                        ),
+                            selected = "Microsatelite 1 colomn per allele"),
+               textInput("missing_code", "Code for missing data", value=0),
                
                tags$hr(),
                
@@ -59,15 +61,18 @@ generateImportDataUI <- function() {
                class = "fixed-filtering-data",
                position = "right",
                
-               selectInput("pop_data", "Population", choices = NULL),
+               selectInput("pop_data", "Population*", choices = NULL),
                
                selectInput("latitude_data", "Latitude", choices = NULL),
                
                selectInput("longitude_data", "Longitude", choices = NULL),
                
-               textInput("col_ranges_data", "Select Genotypes (e.g., 1-4, 5:10)"),
+               textInput("col_ranges_data", "Select Genotypes* (e.g., 1-4 or 5:10)"),
                
-               actionButton("run_assign", "Run Assign Data")
+               actionButton("run_assign", "Run Assign Data"),
+              
+               h6("* mandatory fields")
+               
              )
       )
     ),
@@ -78,6 +83,10 @@ generateImportDataUI <- function() {
              mainPanel(
                tableOutput("contents"),
                tableOutput("populationsLL_uniq_table"),
+               infoBoxOutput("box_population", width=3),
+               infoBoxOutput("box_individuals", width=3),
+               infoBoxOutput("box_marker", width=3),
+               infoBoxOutput("box_number_missing_per", width=3),
                leafletOutput("map") 
              )
       )
