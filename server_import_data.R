@@ -3,16 +3,15 @@
 default_df <- readr::read_tsv("https://www.t-de-meeus.fr/Enseign/BoophilusAdultsDataCattle.txt")
 
 
-concat_identical_cols <- function(df) {
+concat_identical_cols <- function(df,ploidy) {
   col_names <- colnames(df)
   col_names <- sub("\\.\\d+$", "", col_names)  # Remove .1 or .2 from column names
-  
+
   # Initialize result with one row from temp_df
   col1 <- col_names[1]
   temp_df <- data.frame(col1 = df[[col1]])
   colnames(temp_df) <- col1
   result <- temp_df
-  
   i <- 1
   while (i <= ncol(df)) {
     col1 <- col_names[i]
@@ -22,21 +21,28 @@ concat_identical_cols <- function(df) {
       result <- rbind(result, df[[col1]])
       break
     }
-    
     if (identical(col1, col2)) {
       concatenated <- ifelse(is.na(df[,i + 1]), as.character(df[,i]), paste(df[,i], df[,i + 1], sep = "/"))
       temp_df <- data.frame(col1 = concatenated)
       colnames(temp_df) <- col1
       result <- cbind(result, temp_df)
-      i <- i + 2
-    } else {
+      i <- i + ploidy
+      } else {
       result <- cbind(result, df[[col1]], df[[col2]])
-      i <- i + 2
-    }
+      i <- i + ploidy
+      }
   }
   result <- result[, -1]
   
   return(result)
+}
+
+# Define a function for rendering info boxes
+renderInfoBoxUI <- function(title, value, icon_name, color) {
+  infoBox(
+    title, value, icon = icon(icon_name),
+    color = color, fill = TRUE
+  )
 }
 
 
@@ -203,8 +209,6 @@ server_import_data <- function(input, output, session) {
         tableOutput("results_table")
       })
       
-      print(results_table)
-      
       # Render the actual results table
       output$results_table <- renderTable({
         results_table
@@ -212,36 +216,17 @@ server_import_data <- function(input, output, session) {
       
       print("\n\n\n(results_table)\n\n\n")
       
-      # Infobox
-      output$box_population <- renderInfoBox({
-        infoBox(
-          "Population", number_pop, icon = icon("map-location-dot"),
-          color = "purple", fill = TRUE
-        )
-      })
-      output$box_individuals <- renderInfoBox({
-        infoBox(
-          "Individuals", number_indv, icon = icon("people-group"),
-          color = "green", fill = TRUE
-        )
-      })
-      output$box_marker <- renderInfoBox({
-        infoBox(
-          "Marker", number_marker, icon = icon("dna"),
-          color = "blue", fill = TRUE
-        )
-      })
-      output$box_number_missing_per <- renderInfoBox({
-        infoBox(
-          "Percentage of missing data", number_missing_per, icon = icon("database"),
-          color = "yellow", fill = TRUE
-        )
-      })
+      # Render info boxes
+      output$box_population <- renderInfoBoxUI("Population", number_pop, "map-location-dot", "purple")
+      output$box_individuals <- renderInfoBoxUI("Individuals", number_indv, "people-group", "green")
+      output$box_marker <- renderInfoBoxUI("Marker", number_marker, "dna", "blue")
+      output$box_number_missing_per <- renderInfoBoxUI("Percentage of missing data", number_missing_per, "database", "yellow")
+      
       #### data formating       #### 
       
       locus <-  new_df[,4:(3 + length(seq(range_values[1], range_values[2])))]
       
-      concatenated_data <- concat_identical_cols(locus)
+      concatenated_data <- concat_identical_cols(locus, input$ploidy) 
       df_formated <- cbind(new_df[,1:3], concatenated_data, stringsAsFactors = FALSE)
 
       # Update df_assigned
@@ -327,36 +312,17 @@ server_import_data <- function(input, output, session) {
         results_table
       })
       
-      # Infobox
-      output$box_population <- renderInfoBox({
-        infoBox(
-          "Population", number_pop, icon = icon("map-location-dot"),
-          color = "purple", fill = TRUE
-        )
-      })
-      output$box_individuals <- renderInfoBox({
-        infoBox(
-          "Individuals", number_indv, icon = icon("people-group"),
-          color = "green", fill = TRUE
-        )
-      })
-      output$box_marker <- renderInfoBox({
-        infoBox(
-          "Marker", number_marker, icon = icon("dna"),
-          color = "blue", fill = TRUE
-        )
-      })
-      output$box_number_missing_per <- renderInfoBox({
-        infoBox(
-          "Percentage of missing data", number_missing_per, icon = icon("database"),
-          color = "yellow", fill = TRUE
-        )
-      })
+      # Render info boxes
+      output$box_population <- renderInfoBoxUI("Population", number_pop, "map-location-dot", "purple")
+      output$box_individuals <- renderInfoBoxUI("Individuals", number_indv, "people-group", "green")
+      output$box_marker <- renderInfoBoxUI("Marker", number_marker, "dna", "blue")
+      output$box_number_missing_per <- renderInfoBoxUI("Percentage of missing data", number_missing_per, "database", "yellow")
+      
+      
       #### data formating       #### 
 
       locus <-  new_df[,4:(3 + length(seq(range_values[1], range_values[2])))]
-      
-      concatenated_data <- concat_identical_cols(locus)
+      concatenated_data <- concat_identical_cols(locus, input$ploidy) 
       df_formated <- cbind(new_df[,1:3], concatenated_data, stringsAsFactors = FALSE)
 
       # Update df_assigned
