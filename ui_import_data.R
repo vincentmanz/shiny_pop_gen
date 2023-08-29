@@ -38,7 +38,7 @@ generateImportDataUI <- function() {
                
                actionButton("load_default_data", "Load Default Data")
              )
-      ), 
+      ),  
       column(4,
              # Sidebar panel for filtering data
              sidebarPanel(
