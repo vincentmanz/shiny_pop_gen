@@ -190,80 +190,29 @@ server_import_data <- function(input, output, session) {
       print("\n\n\n(latitude_empty && longitude_empty)\n\n\n")
       
       # Filter columns to keep in the new data frame
-      cols_to_keep <- c(input$pop_data, column_range_name)
+      cols_to_keep <-
+        c(
+          input$pop_data,
+          input$latitude_data,
+          input$longitude_data,
+          column_range_name
+        )
       new_df <- df_local[, cols_to_keep]
       
       # Rename columns
       col_names <- colnames(new_df)
+      col_names[2] <- "Latitude"
+      col_names[3] <- "Longitude"
       col_names[4:(3 + length(column_range_name))] <-
         column_range_name
       colnames(new_df) <- col_names
+      # Convert selected columns to numeric
+      cols_to_convert <-
+        col_names[which(col_names %in% c("Latitude", "Longitude", col_names[4:(3 + length(range_values))]))]
+      new_df[, cols_to_convert] <-
+        apply(new_df[, cols_to_convert], 2, as.numeric)
       
-      ### General stats###
-      range_cols <- colnames(new_df)[4:(3 + length(range_values))]
-      # Calculate the number of rows and assign it to a variable 'number_indv'
-      number_indv <- nrow(new_df)
-      # Count missing data in the range col_ranges_data
-      number_missing <- sum(is.na(new_df[, 4:(3 + length(range_values))]) |
-                              new_df[, 4:(3 + length(range_values))] == missing_code)
-      print("number_missing")
-      print(number_missing)
-      print("range_cols")
-      print(range_cols)
       
-      number_missing_per <- (number_missing / length(range_cols)) * 100
-      # Count the number of unique values in pop_data
-      number_pop <- length(unique(new_df[[input$pop_data]]))
-      # Count the number of selected columns in col_ranges_data
-      number_marker <-
-        length(seq(range_values[1], range_values[2])) #### change that later with the number of column per marker
-      # Create a data frame for the missing info
-      results_table <- data.frame(
-        "Number of Population:" = number_pop,
-        "Number of individuals:" = number_indv,
-        "Number of marker:" = number_marker,
-        "Number of missing data:" = number_missing,
-        "Percentage of missing data:" = number_missing_per
-      )
-      # Update result_data with the calculated values
-      result_data$number_pop <- number_pop
-      result_data$number_indv <- number_indv
-      result_data$number_marker <- number_marker
-      result_data$number_missing <- number_missing
-      result_data$number_missing_per <- number_missing_per
-      # Render the results table using renderUI
-      output$results_table_ui <- renderUI({
-        tableOutput("results_table")
-      })
-      
-      # Render the actual results table
-      output$results_table <- renderTable({
-        results_table
-      })
-      print("\n\n\n(results_table)\n\n\n")
-      # Render info boxes
-      output$box_population <-
-        renderInfoBox({
-          renderInfoBoxUI("Population",
-                          number_pop,
-                          "map-location-dot",
-                          "purple")
-        })
-      output$box_individuals <-
-        renderInfoBox({
-          renderInfoBoxUI("Individuals", number_indv, "people-group", "green")
-        })
-      output$box_marker <-
-        renderInfoBox({
-          renderInfoBoxUI("Marker", number_marker, "dna", "blue")
-        })
-      output$box_number_missing_per <-
-        renderInfoBox({
-          renderInfoBoxUI("Percentage of missing data",
-                          number_missing_per,
-                          "database",
-                          "yellow")
-        })
       
       #### data formating       ####
       if (input$file_format == 1) {
@@ -276,12 +225,61 @@ server_import_data <- function(input, output, session) {
           cbind(new_df[, 1:3], concatenated_data, stringsAsFactors = FALSE)
         # Update df_assigned
         df(df_formated)
+        
+        ### General stats###
+        df_range_cols_markers <- df_formated %>% select( 4:ncol(.) )
+        range_cols <-   colnames(df_range_cols_markers)
+        # Calculate the number of rows and assign it to a variable 'number_indv'
+        number_indv <- nrow(df_formated)
+        # Count missing data in the range col_ranges_data
+        miss <- paste(as.character(missing_code), "/", as.character(missing_code), sep = "")
+        number_missing <- sum(df_range_cols_markers == miss)
+        number_missing_per <- (number_missing / (nrow(df_range_cols_markers) * ncol(df_range_cols_markers))) * 100
+        formatted_number_missing_per <- sprintf("%.2f%%", number_missing_per)
+        
+        # Count the number of unique values in pop_data
+        number_pop <- nrow(unique(df_formated[1]))
+        # Count the number of selected columns in col_ranges_data
+        number_marker <- length(df_range_cols_markers)
+        
+        # Render the results table using renderUI                                # check necessity?
+        output$results_table_ui <- renderUI({
+          tableOutput("results_table")
+        })
+        # Render the actual results table
+        output$results_table <- renderTable({
+          results_table
+        })
+        # Render info boxes
+        output$box_population <-
+          renderInfoBox({
+            renderInfoBoxUI("Population",
+                            number_pop,
+                            "map-location-dot",
+                            "purple")
+          })
+        output$box_individuals <-
+          renderInfoBox({
+            renderInfoBoxUI("Individuals", number_indv, "people-group", "green")
+          })
+        output$box_marker <-
+          renderInfoBox({
+            renderInfoBoxUI("Marker", number_marker, "dna", "blue")
+          })
+        output$box_number_missing_per <-
+          renderInfoBox({
+            renderInfoBoxUI("Percentage of<br>missing data",
+                            formatted_number_missing_per,
+                            "database",
+                            "yellow")
+          })
+        
       } else if (input$file_format == 2) {
         # Check if "Microsatellite 1 column for all the alleles" is selected
         # Update df_assigned with new_df
         df(new_df)
       }
-      print("\n\n\n(end if)\n\n\n")
+      
     } else {
       # Check if latitude is not numeric
       if (is.numeric(input$latitude_data)) {
@@ -375,7 +373,7 @@ server_import_data <- function(input, output, session) {
           })
         output$box_number_missing_per <-
           renderInfoBox({
-            renderInfoBoxUI("Percentage of missing data",
+            renderInfoBoxUI("Percentage of<br>missing data",
                             formatted_number_missing_per,
                             "database",
                             "yellow")
