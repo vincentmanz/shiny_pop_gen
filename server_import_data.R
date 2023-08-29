@@ -2,6 +2,44 @@
 
 default_df <- readr::read_tsv("https://www.t-de-meeus.fr/Enseign/BoophilusAdultsDataCattle.txt")
 
+
+concat_identical_cols <- function(df) {
+  col_names <- colnames(df)
+  col_names <- sub("\\.\\d+$", "", col_names)  # Remove .1 or .2 from column names
+  
+  # Initialize result with one row from temp_df
+  col1 <- col_names[1]
+  temp_df <- data.frame(col1 = df[[col1]])
+  colnames(temp_df) <- col1
+  result <- temp_df
+  
+  i <- 1
+  while (i <= ncol(df)) {
+    col1 <- col_names[i]
+    if (i + 1 <= ncol(df)) {
+      col2 <- col_names[i + 1]
+    } else {
+      result <- rbind(result, df[[col1]])
+      break
+    }
+    
+    if (identical(col1, col2)) {
+      concatenated <- ifelse(is.na(df[,i + 1]), as.character(df[,i]), paste(df[,i], df[,i + 1], sep = "/"))
+      temp_df <- data.frame(col1 = concatenated)
+      colnames(temp_df) <- col1
+      result <- cbind(result, temp_df)
+      i <- i + 2
+    } else {
+      result <- cbind(result, df[[col1]], df[[col2]])
+      i <- i + 2
+    }
+  }
+  result <- result[, -1]
+  
+  return(result)
+}
+
+
 server_import_data <- function(input, output, session) {
   
   # Define the reactive expression to hold the data frame
@@ -61,7 +99,7 @@ server_import_data <- function(input, output, session) {
     updateSelectInput(session, 'latitude_data', choices = c("select" = "", colnames(df_local)))
     updateSelectInput(session, 'longitude_data', choices = c("select" = "", colnames(df_local)))
   })
-  
+
   # Create a reactiveValues object to store the results
   result_data <- reactiveValues(
     number_pop = 0,
@@ -104,13 +142,14 @@ server_import_data <- function(input, output, session) {
     latitude_empty <- input$latitude_data == ""
     longitude_empty <- input$longitude_data == ""
     
+    
+
+    ### Option map ###
+
     if (latitude_empty && longitude_empty) {
       
-      
-      
       print("\n\n\n(latitude_empty && longitude_empty)\n\n\n")
-      
-      
+
       # Filter columns to keep in the new data frame
       cols_to_keep <- c(input$pop_data, column_range_name)
       new_df <- df_local[, cols_to_keep]
@@ -119,10 +158,7 @@ server_import_data <- function(input, output, session) {
       col_names <- colnames(new_df)
       col_names[4:(3 + length(column_range_name))] <- column_range_name
       colnames(new_df) <- col_names
-      
-      # Update df_assigned
-      df(new_df)
-      
+
       ### General stats###
       range_cols <- colnames(new_df)[4:(3 + length(range_values))]
       
@@ -144,15 +180,8 @@ server_import_data <- function(input, output, session) {
       number_pop <- length(unique(new_df[[input$pop_data]]))
       
       # Count the number of selected columns in col_ranges_data
-      number_marker <- length(range_values)
-      
-      # Print the results
-      print(paste("Number of Population:", number_pop))
-      print(paste("Number of individuals:", number_indv))
-      print(paste("Number of marker:", number_marker))
-      print(paste("Number of missing data:", number_missing))
-      print(paste("Percentage of missing data:", number_missing_per))
-      
+      number_marker <- length(seq(range_values[1], range_values[2])) #### change that later with the number of column per marker
+     
       # Create a data frame for the missing info
       results_table <- data.frame(
         "Number of Population:" = number_pop,
@@ -174,13 +203,14 @@ server_import_data <- function(input, output, session) {
         tableOutput("results_table")
       })
       
+      print(results_table)
+      
       # Render the actual results table
       output$results_table <- renderTable({
         results_table
       })
       
       print("\n\n\n(results_table)\n\n\n")
-      
       
       # Infobox
       output$box_population <- renderInfoBox({
@@ -207,6 +237,16 @@ server_import_data <- function(input, output, session) {
           color = "yellow", fill = TRUE
         )
       })
+      #### data formating       #### 
+      
+      locus <-  new_df[,4:(3 + length(seq(range_values[1], range_values[2])))]
+      
+      concatenated_data <- concat_identical_cols(locus)
+      df_formated <- cbind(new_df[,1:3], concatenated_data, stringsAsFactors = FALSE)
+
+      # Update df_assigned
+      df(df_formated)
+      
       
       print("\n\n\n(end if)\n\n\n")
       
@@ -237,10 +277,7 @@ server_import_data <- function(input, output, session) {
       # Convert selected columns to numeric
       cols_to_convert <- col_names[which(col_names %in% c("Latitude", "Longitude", col_names[4:(3 + length(range_values))]))]
       new_df[, cols_to_convert] <- apply(new_df[, cols_to_convert], 2, as.numeric)
-      
-      # Update df_assigned
-      df(new_df)
-      
+
       ### General stats###
       range_cols <- colnames(new_df)[4:(3 + length(range_values))]
       
@@ -263,14 +300,7 @@ server_import_data <- function(input, output, session) {
       
       # Count the number of selected columns in col_ranges_data
       number_marker <- length(range_values)
-      
-      # Print the results
-      print(paste("Number of Population:", number_pop))
-      print(paste("Number of individuals:", number_indv))
-      print(paste("Number of marker:", number_marker))
-      print(paste("Number of missing data:", number_missing))
-      print(paste("Percentage of missing data:", number_missing_per))
-      
+   
       # Create a data frame for the missing info
       results_table <- data.frame(
         "Number of Population:" = number_pop,
@@ -322,9 +352,15 @@ server_import_data <- function(input, output, session) {
           color = "yellow", fill = TRUE
         )
       })
-      
       #### data formating       #### 
+
+      locus <-  new_df[,4:(3 + length(seq(range_values[1], range_values[2])))]
       
+      concatenated_data <- concat_identical_cols(locus)
+      df_formated <- cbind(new_df[,1:3], concatenated_data, stringsAsFactors = FALSE)
+
+      # Update df_assigned
+      df(df_formated)
       
       
       
@@ -332,8 +368,7 @@ server_import_data <- function(input, output, session) {
       
       # Create the populationsLL data frame
       populationsLL <- new_df[,1:3]
-      print(populationsLL)
-      
+
       # Group by Locality, Latitude, and Longitude, and calculate Population Size
       populationsLL_grouped <- populationsLL %>%
         group_by_all()%>%count()
