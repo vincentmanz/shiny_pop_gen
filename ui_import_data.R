@@ -19,7 +19,7 @@ generateImportDataUI <- function() {
                checkboxInput("header", "Header", TRUE),
                
                radioButtons("sep", "Separator",
-                            choices = c(Comma = ",",
+                            # choices = c(Comma = ",",
                                         Semicolon = ";",
                                         Tab = "\t"),
                             selected = "\t"),
