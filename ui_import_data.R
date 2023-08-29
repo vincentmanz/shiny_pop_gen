@@ -83,10 +83,10 @@ generateImportDataUI <- function() {
              mainPanel(
                tableOutput("contents"),
                tableOutput("populationsLL_uniq_table"),
-               infoBoxOutput("box_population", width=3),
-               infoBoxOutput("box_individuals", width=3),
-               infoBoxOutput("box_marker", width=3),
-               infoBoxOutput("box_number_missing_per", width=3),
+               infoBoxOutput("box_population", width=5),
+               infoBoxOutput("box_individuals", width=5),
+               infoBoxOutput("box_marker", width=5),
+               infoBoxOutput("box_number_missing_per", width=5),
                leafletOutput("map") 
              )
       )
