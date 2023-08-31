@@ -417,6 +417,7 @@ server_import_data <- function(input, output, session) {
             fillOpacity = 0.5
           )
       })
+      write.csv(new_df, file = "data/filtered_data.csv")
     }
   })
 }
