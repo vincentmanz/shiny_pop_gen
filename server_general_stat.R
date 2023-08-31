@@ -44,11 +44,10 @@ general_stats_server <- function(input, output, session) {
       
       # Create mydata_hierfstat
       mydata_hierfstat <- genind2hierfstat(mydata_genind)
-      print(head(mydata_hierfstat))
       # Run basic.stats and render the result
       result <- basic.stats(mydata_hierfstat)
-      print(result)
-      print(selected_stats)
+      print(result$perloc)
+      df<-result$perloc
       output$basic_stats_result <- renderPrint({
         cat("Selected Statistics:\n", paste(selected_stats, collapse = ", "), "\n")
         cat("Basic Stats Result:\n")
@@ -57,4 +56,3 @@ general_stats_server <- function(input, output, session) {
     }
   })
 }
-
