@@ -1,110 +1,58 @@
-server_general_stats <- function(input, output, session) {
+# server_general_stat.R 
+shiny.react::enableReactDebugMode()
+filtered_data <- read.csv("data/filtered_data.csv")
+head(filled_data)
+# Define the server logic
+general_stats_server <- function(input, output, session) {
   
-  # Define the reactive expression to hold the data frame
-  df_reactive <- reactiveVal(default_df)
-  
-  # Update the select input choices for "Population" and "Individuals"
-  observe({
-    req(df_reactive())
-    df <- df_reactive()
+  # Function to run the basic.stats and render the result
+  observeEvent(input$run_basic_stats, {
+    selected_stats <- c(
+      Ho = input$ho_checkbox,
+      Hs = input$hs_checkbox,
+      Ht = input$ht_checkbox,
+      Dst = input$dst_checkbox,
+      Htp = input$htp_checkbox,
+      Dstp = input$dstp_checkbox,
+      Fst = input$fst_checkbox,
+      Fstp = input$fstp_checkbox,
+      Fis = input$fis_checkbox,
+      Dest = input$dest_checkbox
+    )
     
-    updateSelectInput(session, 'var1', choices = c("select" = "", colnames(df)))
-    updateSelectInput(session, 'var2', choices = c("select" = "", colnames(df)))
-  })
-  
-  # Observer for the 'Run' button for variables
-  observeEvent(input$run_var, {
-    req(df_reactive(), input$var1, input$var2)
-    df <- df_reactive()
-    
-    pop_col <- input$var1
-    ind_col <- input$var2
-    
-    if (!is.null(pop_col) && !is.null(ind_col)) {
-      counts <- df %>%
-        group_by_at(vars({{ pop_col }}, {{ ind_col }})) %>%
-        summarize(count = n())
+    selected_stats <- selected_stats[selected_stats]
+    if (length(selected_stats) > 0) {
+      # Assuming your data is already loaded into 'df_format_1'
       
-      output$count_table <- renderTable({
-        counts
+      # Prepare the concatenated_data and df_format_1
+      df_format_1 <- data.frame(indv = paste(substr(diploid_2C$Locality,1,3), row.names(diploid_2C), sep="."), filtered_data)
+      
+      # Create mydata_genind
+      population <- df_format_1$Locality
+      mydata_genind <- df2genind(
+        X = concatenated_data,
+        sep = "/",
+        ncode = 6,
+        ind.names = df_format_1$indv,
+        pop = df_format_1$Locality,
+        NA.char = "0/0",
+        ploidy = 2,
+        type = "codom",
+        strata = NULL,
+        hierarchy = NULL
+      )
+      
+      # Create mydata_hierfstat
+      mydata_hierfstat <- genind2hierfstat(mydata_genind)
+      # Run basic.stats and render the result
+      result <- basic.stats(mydata_hierfstat)
+      print(result$perloc)
+      df<-result$perloc
+      output$basic_stats_result <- renderPrint({
+        cat("Selected Statistics:\n", paste(selected_stats, collapse = ", "), "\n")
+        cat("Basic Stats Result:\n")
+        print(result)
       })
     }
   })
-  
-  # Observer for the 'Run' button for column ranges
-  observeEvent(input$run_col_ranges, {
-    req(df_reactive(), input$col_ranges)
-    df <- df_reactive()
-    
-    col_ranges <- unlist(strsplit(input$col_ranges, ","))
-    
-    missing_percentages <- numeric(length(col_ranges))
-    missing_counts <- integer(length(col_ranges))
-    
-    for (i in seq_along(col_ranges)) {
-      range_str <- trimws(col_ranges[i])
-      if (grepl("-", range_str)) {
-        range_parts <- as.numeric(strsplit(range_str, "-")[[1]])
-        if (length(range_parts) == 2 && all(!is.na(range_parts))) {
-          start_col <- range_parts[1]
-          end_col <- range_parts[2]
-          
-          num_zeros_nas <- sum(df[start_col:end_col] == 0 | is.na(df[start_col:end_col]))
-          total_cells <- length(df[start_col:end_col])
-          missing_percentage <- (num_zeros_nas / total_cells) * 100
-          
-          missing_percentages[i] <- missing_percentage
-          missing_counts[i] <- num_zeros_nas
-        }
-      } else if (grepl(":", range_str)) {
-        range_parts <- as.numeric(strsplit(range_str, ":")[[1]])
-        if (length(range_parts) == 2 && all(!is.na(range_parts))) {
-          start_col <- range_parts[1]
-          end_col <- range_parts[2]
-          
-          num_zeros_nas <- sum(df[start_col:end_col] == 0 | is.na(df[start_col:end_col]))
-          total_cells <- length(df[start_col:end_col])
-          missing_percentage <- (num_zeros_nas / total_cells) * 100
-          
-          missing_percentages[i] <- missing_percentage
-          missing_counts[i] <- num_zeros_nas
-        }
-      }
-    }
-    
-    # Create a data frame for the missing info
-    missing_info_df <- data.frame(
-      Column_Range = col_ranges,
-      Missing_Count = missing_counts,
-      Missing_Percentage = missing_percentages
-    )
-    
-    # Render the missing info as HTML code
-    output$missing_info <- renderUI({
-      HTML(
-        paste(
-          "<table class='table shiny-table table-spacing-s' style='width:auto;'>",
-          "<thead> <tr>",
-          "<th style='text-align: left;'> Column_Range </th>",
-          "<th style='text-align: right;'> Missing_Count </th>",
-          "<th style='text-align: right;'> Missing_Percentage </th>",
-          "</tr> </thead>",
-          "<tbody>",
-          apply(missing_info_df, 1, function(row) {
-            paste("<tr>",
-                  "<td>", row[1], "</td>",
-                  "<td align='right'>", row[2], "</td>",
-                  "<td align='right'>", row[3], "</td>",
-                  "</tr>", sep = "")
-          }),
-          "</tbody>",
-          "</table>"
-        )
-      )
-    })
-    
-  })
-  
-  # outputOptions(output, "missing_info", suspendWhenHidden = FALSE)  # Keep output active
-  
 }

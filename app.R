@@ -15,10 +15,11 @@ library(kableExtra)
 # Source server and UI files
 source("server_import_data.R")
 source("server_genetic_drift.R")
+source("server_general_stats.R")
+
 source("ui_import_data.R")
 source("ui_genetic_drift.R")
 source("ui_general_stats.R")
-source("server_general_stat.R")
 
 source("helper.R")
 
