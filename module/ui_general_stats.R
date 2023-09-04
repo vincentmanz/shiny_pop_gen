@@ -7,17 +7,17 @@ general_stats_UI <- function() {
              # Sidebar panel for uploading files
              sidebarPanel(
                width = 12,
-               h5("Basic diversity and differentiation statistics"),
-               checkboxInput("ho_checkbox", "Ho", TRUE),
-               checkboxInput("hs_checkbox", "Hs", FALSE),
-               checkboxInput("ht_checkbox", "Ht", FALSE),
-               checkboxInput("dst_checkbox", "Dst", FALSE),
-               checkboxInput("htp_checkbox", "Htp", FALSE),
-               checkboxInput("dstp_checkbox", "Dstp", FALSE),
-               checkboxInput("fst_checkbox", "Fst", FALSE),
-               checkboxInput("fstp_checkbox", "Fstp", FALSE),
-               checkboxInput("fis_checkbox", "Fis", FALSE),
-               checkboxInput("dest_checkbox", "Dest", FALSE),
+               h6("Basic diversity and differentiation statistics"),             
+               checkboxInput("ho_checkbox", "Ho: heterozygosity within population (observed heterozygosity)", TRUE),
+               checkboxInput("hs_checkbox", "Hs: genetic diversity within population", FALSE),
+               checkboxInput("ht_checkbox", "Ht: overall gene diversity", FALSE),
+               checkboxInput("htp_checkbox", "Htp: corrected Ht", FALSE),
+               checkboxInput("dst_checkbox", "Dst: gene diversity among samples", FALSE),
+               checkboxInput("dstp_checkbox", "Dstp: corrected Dst", FALSE),
+               checkboxInput("fst_checkbox", "Fst: fixation index", FALSE),
+               checkboxInput("fstp_checkbox", "Fstp: corrected Fst", FALSE),
+               checkboxInput("fis_checkbox", "Fis: inbreeding coefficient per overall loci", FALSE),
+               checkboxInput("dest_checkbox", "Dest: measure of population differentiation", FALSE),
                tags$hr(),
                actionButton("run_basic_stats", "Run")
              )
@@ -27,14 +27,5 @@ general_stats_UI <- function() {
              tableOutput("basic_stats_result")
       )
     ),
-    # Footer notes
-    fluidRow(
-      column(12,
-             h4("Indices Definitions:"),
-             p("Ho: heterozygosity within population (observed heterozygosity), Hs: genetic diversity within population, 
-          Ht: overall gene diversity, Dst: gene diversity among samples, Dstp: corrected Dst, Fst: fixation index, Fstp: corrected Fst, 
-          Fis: inbreeding coefficient per overall loci, Dest: measure of population differentiation")
-      )
-    )
   )
 }
