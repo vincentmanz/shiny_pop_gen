@@ -1,6 +1,6 @@
 # server_import_data.R
 
-source("helper.R")
+source("www/helper.R")
 
 server_import_data <- function(input, output, session) {
   # Define the reactive expression to hold the data frame

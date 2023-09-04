@@ -13,20 +13,17 @@ library(hierfstat)
 library(kableExtra)
 
 # Source server and UI files
-source("server_import_data.R")
-source("server_genetic_drift.R")
-source("ui_import_data.R")
-source("ui_genetic_drift.R")
-source("ui_general_stats.R")
-source("server_general_stat.R")
+source("module/server_import_data.R")
+source("module/server_genetic_drift.R")
+source("module/server_general_stats.R")
 
-source("helper.R")
+source("module/ui_import_data.R")
+source("module/ui_genetic_drift.R")
+source("module/ui_general_stats.R")
+
+source("www/helper.R")
 
 shiny.react::enableReactDebugMode()
-
-linebreaks <- function(n) {
-  HTML(strrep(br(), n))
-}
 
 ## dashboard layout
 sidebar <- dashboardSidebar(

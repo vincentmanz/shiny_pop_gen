@@ -9,7 +9,7 @@ header <- dashboardHeader(title = "GenoPop",
                                       style = "padding-top:10px; padding-bottom:10px;"),
                                     class = "dropdown"))
 
-
+# line breaks function
 linebreaks <- function(n) {
   HTML(strrep(br(), n))
 }
