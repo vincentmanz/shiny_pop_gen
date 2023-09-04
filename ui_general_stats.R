@@ -1,3 +1,5 @@
+# ui_general_stats.R
+
 general_stats_UI <- function() {
   fluidPage(
     fluidRow(
@@ -19,6 +21,10 @@ general_stats_UI <- function() {
                tags$hr(),
                actionButton("run_basic_stats", "Run")
              )
+      ),
+      column(8,
+             # Display the table here
+             tableOutput("basic_stats_result")
       )
     ),
     # Footer notes
@@ -26,8 +32,8 @@ general_stats_UI <- function() {
       column(12,
              h4("Indices Definitions:"),
              p("Ho: heterozygosity within population (observed heterozygosity), Hs: genetic diversity within population, 
-               Ht: overall gene diversity, Dst: gene diversity among samples, Dstp: corrected Dst, Fst: fixation index, Fstp: corrected Fst, 
-               Fis: inbreeding coefficient per overall loci, Dest: measure of population differentiation")
+          Ht: overall gene diversity, Dst: gene diversity among samples, Dstp: corrected Dst, Fst: fixation index, Fstp: corrected Fst, 
+          Fis: inbreeding coefficient per overall loci, Dest: measure of population differentiation")
       )
     )
   )

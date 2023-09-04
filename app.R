@@ -25,10 +25,6 @@ source("helper.R")
 
 shiny.react::enableReactDebugMode()
 
-linebreaks <- function(n) {
-  HTML(strrep(br(), n))
-}
-
 ## dashboard layout
 sidebar <- dashboardSidebar(
   sidebarMenu(id="sidebar",  
