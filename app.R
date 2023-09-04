@@ -20,6 +20,7 @@ source("ui_genetic_drift.R")
 source("ui_general_stats.R")
 source("server_general_stat.R")
 
+source("helper.R")
 
 shiny.react::enableReactDebugMode()
 
@@ -28,7 +29,6 @@ linebreaks <- function(n) {
 }
 
 ## dashboard layout
-header <- dashboardHeader(title = "GenoPop")
 sidebar <- dashboardSidebar(
   sidebarMenu(id="sidebar",  
               menuItem("Welcome to GenoPop", tabName = "welcome", icon = icon("home"),  selected=TRUE),
@@ -36,33 +36,6 @@ sidebar <- dashboardSidebar(
               menuItem("General Statsistics", tabName = "general_stats", icon = icon("dashboard")),
               menuItem("Genetic Drift", tabName = "drift", icon = icon("dashboard"))
   )
-)
-
-# Create a data frame for the one example
-
-data_one_col <- data.frame(
-  Population = c("Boulouparis", "Boulouparis", "Gadji", "PortLaguerre", "Sarramea"),
-  B12 = c("192/194", "200/200", "0/0", "145/145", "0/0"),
-  C07 = c("145/192", "179/179", "92/100", "92/92", "92/92")
-)
-# Create a data frame for the two-column example
-data_two_col <- data.frame(
-  Population = c("Boulouparis", "Gadji", "PortLaguerre", "Sarramea"),
-  B12 = c(192, 200, 0, 145),
-  B12_2 = c(194, 200, 0, 145),
-  C07 = c(145, 179, 92, 92),
-  C07_2 = c(192, 179, 92, 100)
-)
-
-# Create a data frame for the latitude/longitude example
-data_gps <- data.frame(
-  Population = c("Boulouparis", "Gadji", "PortLaguerre", "Sarramea"),
-  Latitude = c(-21.86444444, -22.16805556, -22.10111111, -21.64111111),
-  Longitude = c(166.0391667, 166.2694444, 166.3030556, 165.8461111),
-  B12 = c(192, 200, 0, 145),
-  "B12" = c(194, 200, 0, 145),
-  C07 = c(145, 179, 92, 92),
-  "C07" = c(192, 179, 92, 100)
 )
 
 body <- dashboardBody(
@@ -80,7 +53,9 @@ body <- dashboardBody(
         ),
         paste("To utilize this application, begin by importing your data in the 
               Data Import and Filtering tab. Once your data is loaded, you can proceed to execute any of the analyses available within the application.",
-              sep = "<br/>"
+              sep = "<br/>",
+              linebreaks(5)
+              
         )
       ),
       HTML(
@@ -117,7 +92,9 @@ body <- dashboardBody(
           kable_styling(full_width = F, position = "c") %>%
           column_spec(column = 2, background = "#347893") %>%
           column_spec(column = 3, background = "#699CB3"),
-        "</div>"
+        "</div>",
+        linebreaks(5)
+        
       ),
       HTML(
         "<h3>Contact</h4>",

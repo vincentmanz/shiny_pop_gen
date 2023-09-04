@@ -98,7 +98,6 @@ server_import_data <- function(input, output, session) {
     
     ### Option map ###
     if (latitude_empty || longitude_empty) {
-      print("\n\n\n(latitude_empty && longitude_empty)\n\n\n")
       # Filter columns to keep in the new data frame
       cols_to_keep <- c(input$pop_data, column_range_name)
       new_df <- df_local[, cols_to_keep]  
