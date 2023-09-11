@@ -112,8 +112,7 @@ server_import_data <- function(input, output, session) {
       new_df <- df_local[, cols_to_keep]  
       # Rename columns
       colnames(new_df)[1] ="Population"
-      
-      
+      head(new_df)
       # Convert selected columns to numeric
       col_names <- colnames(new_df)
       cols_to_convert <- col_names[which(col_names %in% c(col_names[2:(1 + length(range_values))]))]
@@ -126,7 +125,7 @@ server_import_data <- function(input, output, session) {
         concatenated_data <- concat_identical_cols(locus, input$ploidy)
         df_formated <- cbind(new_df[, 1], concatenated_data, stringsAsFactors = FALSE)
         colnames(df_formated)[1] ="Population"
-        
+        head(df_formated)
         # Update df_assigned
         df(df_formated)
         
@@ -146,8 +145,7 @@ server_import_data <- function(input, output, session) {
         # Count the number of selected columns in col_ranges_data
         number_marker <- length(df_range_cols_markers)
         
-        # Render the results table using renderUI                                # check necessity?
-        output$results_table_ui <- renderUI({ tableOutput("results_table")})
+   
         # Render the actual results table
         output$results_table <- renderTable({ results_table})
         # Render info boxes
@@ -175,31 +173,31 @@ server_import_data <- function(input, output, session) {
       # Filter columns to keep in the new data frame
       cols_to_keep <- c(input$pop_data,input$latitude_data,input$longitude_data,column_range_name)
       new_df <- df_local[, cols_to_keep]
+      head(new_df)
+      print(178)
       
       # Rename columns
       col_names <- colnames(new_df)
       col_names[2] <- "Population"
       col_names[2] <- "Latitude"
       col_names[3] <- "Longitude"
-      col_names[4:(3 + length(column_range_name))] <-
-        column_range_name
-      colnames(new_df) <- col_names
-      # Convert selected columns to numeric
+      col_names[4:(3 + length(column_range_name))] <- column_range_name
+    # Convert selected columns to numeric
       cols_to_convert <-
         col_names[which(col_names %in% c("Latitude", "Longitude", col_names[4:(3 + length(range_values))]))]
       new_df[, cols_to_convert] <-
         apply(new_df[, cols_to_convert], 2, as.numeric)
-      
-      
-      #### data formating       ####
+      head(new_df)
+      print(190)
+
+      # Data formatting
       if (input$file_format == 1) {
         # Check if "Microsatellite 1 column per allele" is selected
-        locus <-
-          new_df[, 4:(3 + length(seq(range_values[1], range_values[2])))]
-        concatenated_data <-
-          concat_identical_cols(locus, input$ploidy)
-        df_formated <-
-          cbind(new_df[, 1:3], concatenated_data, stringsAsFactors = FALSE)
+        locus <- new_df[, 4:(3 + length(seq(range_values[1], range_values[2])))]
+        concatenated_data <- concat_identical_cols(locus, input$ploidy)
+        df_formated <- cbind(new_df[, 1:3], concatenated_data, stringsAsFactors = FALSE)
+      }
+      
         # Update df_assigned
         df(df_formated)
         
@@ -219,14 +217,8 @@ server_import_data <- function(input, output, session) {
         # Count the number of selected columns in col_ranges_data
         number_marker <- length(df_range_cols_markers)
         
-        # Render the results table using renderUI                                # check necessity?
-        output$results_table_ui <- renderUI({
-          tableOutput("results_table")
-        })
         # Render the actual results table
-        output$results_table <- renderTable({
-          results_table
-        })
+        output$results_table <- renderTable({results_table})
         # Render info boxes
         output$box_population <- renderInfoBox({renderInfoBoxUI("Population", number_pop, "map-location-dot", "purple")})
         output$box_individuals <- renderInfoBox({renderInfoBoxUI("Individuals", number_indv, "people-group", "green")})
