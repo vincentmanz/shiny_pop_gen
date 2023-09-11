@@ -78,7 +78,7 @@ generateImportDataUI <- function() {
         status = "primary",
         solidHeader = TRUE,
         leafletOutput("map",
-                      height = "800px"),
+                      height = "800px")
         ## DOWNLOAD
 #        downloadButton("download_map", "Download"),
       )
