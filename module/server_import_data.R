@@ -37,8 +37,7 @@ server_import_data <- function(input, output, session) {
       df(df_filtered)
     }
   })
-  
-  
+
   # Update the select input choices
   observe({req(df())
     df_local <- df()
@@ -58,6 +57,23 @@ server_import_data <- function(input, output, session) {
   # Display  an empty map monde
   output$map <- renderLeaflet({leaflet() %>% addTiles()})
   
+  # Download data csv handler
+  output$download_csv <- downloadHandler(
+    filename = function() {
+      paste("data-", Sys.Date(), ".csv", sep = "")
+    },
+    content = function(file) {
+      write.csv(df(), file)  # df() should be the data you want to download
+    }
+  )
+  # Download map handler
+  output$download_map <-  downloadHandler(
+    filename = function() {
+      paste("map-", Sys.Date(), ".pdf")},
+    content = function(file) {
+      saveWidget(output$map, file)
+    }
+  )
   # Create the table and the map
   observeEvent(input$run_assign, {
     req(
@@ -150,7 +166,7 @@ server_import_data <- function(input, output, session) {
         output$results_table_ui <- renderUI({ tableOutput("results_table")})
         # Render the actual results table
         output$results_table <- renderTable({ results_table})
-        
+
         
         # Render info boxes
         output$box_population <- renderInfoBox({renderInfoBoxUI("Population", number_pop, "map-location-dot", "purple")})
@@ -163,7 +179,6 @@ server_import_data <- function(input, output, session) {
         # Update df_assigned with new_df
         df(new_df)
       }
-      
     } else {
       # Check if latitude is not numeric
       if (is.numeric(input$latitude_data)) {
@@ -229,6 +244,8 @@ server_import_data <- function(input, output, session) {
         output$results_table <- renderTable({
           results_table
         })
+        
+    
         # Render info boxes
         output$box_population <- renderInfoBox({renderInfoBoxUI("Population", number_pop, "map-location-dot", "purple")})
         output$box_individuals <- renderInfoBox({renderInfoBoxUI("Individuals", number_indv, "people-group", "green")})
@@ -240,7 +257,6 @@ server_import_data <- function(input, output, session) {
         # Update df_assigned with new_df
         df(new_df)
       }
-      
       ##### MAP ####
       # Create the populationsLL data frame
       populationsLL <- new_df[, 1:3]

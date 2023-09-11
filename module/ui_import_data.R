@@ -1,5 +1,10 @@
 # ui_import_data.R
 
+#customDownloadbutton <- function(outputId, label = ""){
+#  tags$a(id = outputId, class = "btn btn-default shiny-download-link", href = paste("data-", Sys.Date(), ".csv", sep = "\t"), 
+#         target = "contents", download = NA, icon("download"), label)
+#}
+
 generateImportDataUI <- function() {
   fluidPage(
     fluidRow(
@@ -61,6 +66,9 @@ generateImportDataUI <- function() {
           div(style = "height:500px; overflow-y: scroll; overflow-x: scroll;",
               tableOutput("contents")
           ),
+          
+          ## DOWNLOAD
+          downloadButton("download_csv", ""),
           tableOutput("populationsLL_uniq_table")
         )
       ),
@@ -70,7 +78,9 @@ generateImportDataUI <- function() {
         status = "primary",
         solidHeader = TRUE,
         leafletOutput("map",
-                      height = "800px")
+                      height = "800px"),
+        ## DOWNLOAD
+        downloadButton("download_map", ""),
       )
     )
   )
