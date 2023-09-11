@@ -50,37 +50,39 @@ generateImportDataUI <- function() {
                footer = "* mandatory fields"
              )
       ),
-      box(
-        title = "Data Frame",
-        status = "primary",
-        solidHeader = TRUE,
-        width = 8,  # Set the width to 12 to take up the entire row
-        div(
-          tableOutput("contents"),
-          tableOutput("populationsLL_uniq_table")
-        )
-      ),
-      box(
-        title = "General information",
-        status = "primary",
-        solidHeader = TRUE,
-        width = 8,  # Set the width to 12 to take up the entire row
-        mainPanel(
-                 infoBoxOutput("box_population", width = 5),
-                 infoBoxOutput("box_individuals", width = 5),
-                 infoBoxOutput("box_marker", width = 5),
-                 infoBoxOutput("box_number_missing_per", width = 5),
+      column(8,
+             mainPanel(
+               box(
+                 title = "Data Frame",
+                 status = "primary",
+                 solidHeader = TRUE,
+                 width = 12,  # Set the width to 12 to take up the entire row
+                 div(
+                   tableOutput("contents"),
+                   tableOutput("populationsLL_uniq_table")
+                 )
                ),
-      ),
-      box( 
-        title = "Map",
-        status = "primary",
-        solidHeader = TRUE,
-        width = 8,  # Set the width to 12 to take up the entire row
-              leafletOutput("map")
-      )
-             
+               box(
+                 title = "General information",
+                 status = "primary",
+                 solidHeader = TRUE,
+                 width = 12,  # Set the width to 12 to take up the entire row
+                 mainPanel(
+                   infoBoxOutput("box_population", width = 5),
+                   infoBoxOutput("box_individuals", width = 5),
+                   infoBoxOutput("box_marker", width = 5),
+                   infoBoxOutput("box_number_missing_per", width = 5),
+                 )
+               ),
+               box( 
+                 title = "Map",
+                 status = "primary",
+                 solidHeader = TRUE,
+                 width = 12,  # Set the width to 12 to take up the entire row
+                 leafletOutput("map")
+               )
+             )
       )
     )
-  #)
+  )
 }
