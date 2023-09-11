@@ -66,14 +66,7 @@ server_import_data <- function(input, output, session) {
       write.csv(df(), file)  # df() should be the data you want to download
     }
   )
-  # Download map handler
-  output$download_map <-  downloadHandler(
-    filename = function() {
-      paste("map-", Sys.Date(), ".pdf")},
-    content = function(file) {
-      saveWidget(output$map, file)
-    }
-  )
+ 
   # Create the table and the map
   observeEvent(input$run_assign, {
     req(
@@ -290,6 +283,16 @@ server_import_data <- function(input, output, session) {
           )
       })
       write.csv(new_df, file = "data/filtered_data.csv")
+      # Download map handler
+#      output$download_map <-  downloadHandler(
+#        filename = function() {
+#          paste("map-", Sys.Date(), ".pdf")},
+#        content = function(file) {
+#          pdf(file, width = 8, height = 6)  # Adjust the width and height as needed
+#          print(output$map)  # Print the map to the PDF
+#          dev.off()  # Close the PDF device
+ #       }
+#      )
     }
   })
 }

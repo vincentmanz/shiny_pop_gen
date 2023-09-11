@@ -80,7 +80,7 @@ generateImportDataUI <- function() {
         leafletOutput("map",
                       height = "800px"),
         ## DOWNLOAD
-        downloadButton("download_map", ""),
+#        downloadButton("download_map", "Download"),
       )
     )
   )
