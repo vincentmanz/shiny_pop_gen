@@ -1,7 +1,7 @@
 generateImportDataUI <- function() {
   fluidPage(
     fluidRow(
-      column(4,
+      column(width = 4,
              box(
                title = "Data Import and Structure",
                status = "primary",
@@ -50,40 +50,37 @@ generateImportDataUI <- function() {
                footer = "* mandatory fields"
              )
       ),
-      box(
-        title = "Data Frame",
-        status = "primary",
-        solidHeader = TRUE,
-        height = "595",
-        width = 8,  
-        tagList(
-          # Wrap the table in a div with scrollable styles
-          div(style = "height:500px; overflow-y: scroll; overflow-x: scroll;",
-              tableOutput("contents")
-          ),
-          tableOutput("populationsLL_uniq_table")
-        )
-        ),
-#      box(
-#        title = "General information",
-#        status = "primary",
-#        solidHeader = TRUE,
-#        width = 8,
-#        mainPanel(
-#                 infoBoxOutput("box_population", width = 5),
-#                 infoBoxOutput("box_individuals", width = 5),
- #                infoBoxOutput("box_marker", width = 5),
-#                 infoBoxOutput("box_number_missing_per", width = 5),
-#               ),
-#      ),
-      box( 
-        title = "Map",
-        status = "primary",
-        solidHeader = TRUE,
-        width = 8, 
-              leafletOutput("map")
-      )
-             
+      column(width = 8,
+             box(
+               title = "Data Frame",
+               status = "primary",
+               solidHeader = TRUE,
+               width = 12,  # Set the width to 12 to take up the entire row
+               div(
+                 tableOutput("contents"),
+                 tableOutput("populationsLL_uniq_table")
+               )
+             ),
+             box(
+               title = "General information",
+               status = "primary",
+               solidHeader = TRUE,
+               width = 12,  # Set the width to 12 to take up the entire row
+               mainPanel(
+                 infoBoxOutput("box_population", width = 5),
+                 infoBoxOutput("box_individuals", width = 5),
+                 infoBoxOutput("box_marker", width = 5),
+                 infoBoxOutput("box_number_missing_per", width = 5),
+               )
+             ),
+             box( 
+               title = "Map",
+               status = "primary",
+               solidHeader = TRUE,
+               width = 12,  # Set the width to 12 to take up the entire row
+               leafletOutput("map")
+             )
       )
     )
+  )
 }
