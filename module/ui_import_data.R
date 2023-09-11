@@ -1,14 +1,14 @@
+# ui_import_data.R
+
 generateImportDataUI <- function() {
   fluidPage(
     fluidRow(
-      
       box(
         width = 2,
         title = "Data Import and Structure",
         status = "primary",
         solidHeader = TRUE,
         h3("1. Import Data"),
-        # Sidebar panel for uploading files
         fileInput("file1", "Choose CSV File",
                   multiple = TRUE,
                   accept = c("text/csv",
@@ -21,19 +21,13 @@ generateImportDataUI <- function() {
                                  Tab = "\t"),
                      selected = "\t"),
         actionButton("load_default_data", "Load Default Data"),
-        br(),
-        br(),
-        tags$hr(),
-        br(),
+        br(), br(), tags$hr(), br(),
         h3("2. Filtering data"),
         class = "fixed-filtering-data",
         textInput("exclude_cols", "Exclude columns (comma-separated)", ""),
         textInput("exclude_rows", "Exclude rows (comma-separated or range)", ""),
         actionButton("run_filter", "Run"),
-        br(),
-        br(),
-        tags$hr(),
-        br(),
+        br(), br(), tags$hr(), br(),
         h3("3. Data structure"),
         class = "fixed-filtering-data",
         position = "right",
@@ -50,31 +44,34 @@ generateImportDataUI <- function() {
         actionButton("run_assign", "Run Assign Data"),
         footer = "* mandatory fields"
       ),
-      
+      mainPanel(
+        infoBoxOutput("box_population", width = 3),
+        infoBoxOutput("box_individuals", width = 3),
+        infoBoxOutput("box_marker", width = 3),
+        infoBoxOutput("box_number_missing_per", width = 3)
+      ),
       box(
-        width = 10,
-        title = "Data Frame",
+        title = "Data",
         status = "primary",
         solidHeader = TRUE,
-        div(
-          tableOutput("contents"),
+        height = "2000",
+        width = 10,  
+        tagList(
+          # Wrap the table in a div with scrollable styles
+          div(style = "height:500px; overflow-y: scroll; overflow-x: scroll;",
+              tableOutput("contents")
+          ),
           tableOutput("populationsLL_uniq_table")
         )
-      ),
-      mainPanel(
-        infoBoxOutput("box_population", width = 5),
-        infoBoxOutput("box_individuals", width = 5),
-        infoBoxOutput("box_marker", width = 5),
-        infoBoxOutput("box_number_missing_per", width = 5),
       ),
       box(
         width = 10,
         title = "Map",
         status = "primary",
         solidHeader = TRUE,
-        leafletOutput("map")
+        leafletOutput("map",
+                      height = "800px")
       )
     )
-    
   )
 }

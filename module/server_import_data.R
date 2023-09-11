@@ -2,16 +2,11 @@
 
 source("www/helper.R")
 
-empty_data <- tibble( read.csv("https://www.t-de-meeus.fr/Enseign/BoophilusAdultsDataCattle.txt", header = TRUE, sep = "\t"))
-
 
 server_import_data <- function(input, output, session) {
-  # Render the empty table using kable and kableExtra
-  output$empty_table <- renderUI({
-    HTML(kable(empty_data, format = "html") %>%
-           kable_styling(full_width = FALSE))
-  })
+
   
+
   # Define the reactive expression to hold the data frame
   df <- reactiveVal()
   # Load default data when the button is clicked
@@ -43,10 +38,6 @@ server_import_data <- function(input, output, session) {
     }
   })
   
-  # Display the first 15 rows of the dataframe
-  output$contents <- renderTable({ req(df())
-    head(df(), n = 15)
-  })
   
   # Update the select input choices
   observe({req(df())
@@ -56,8 +47,17 @@ server_import_data <- function(input, output, session) {
     updateSelectInput(session, 'longitude_data', choices = c("select" = "", colnames(df_local)))
   })
   
-  # Create a reactiveValues object to store the results
-  result_data <- reactiveValues( number_pop = 0, number_indv = 0, number_marker = 0, number_missing = 0, number_missing_per = 0)
+  # Render info boxes default
+  output$box_population <- renderInfoBox({renderInfoBoxUI("Population", 0, "map-location-dot", "purple")})
+  output$box_individuals <- renderInfoBox({renderInfoBoxUI("Individuals", 0, "people-group", "green")})
+  output$box_marker <- renderInfoBox({renderInfoBoxUI("Marker", 0, "dna", "blue")})
+  output$box_number_missing_per <- renderInfoBox({renderInfoBoxUI(HTML("Percentage of<br>missing data"),0,"database","yellow")})
+ 
+  # Display  the loaded data frame 
+  output$contents <- renderTable({ req(df())})
+  # Display  an empty map monde
+  output$map <- renderLeaflet({leaflet() %>% addTiles()})
+  
   # Create the table and the map
   observeEvent(input$run_assign, {
     req(
@@ -150,11 +150,13 @@ server_import_data <- function(input, output, session) {
         output$results_table_ui <- renderUI({ tableOutput("results_table")})
         # Render the actual results table
         output$results_table <- renderTable({ results_table})
+        
+        
         # Render info boxes
         output$box_population <- renderInfoBox({renderInfoBoxUI("Population", number_pop, "map-location-dot", "purple")})
         output$box_individuals <- renderInfoBox({renderInfoBoxUI("Individuals", number_indv, "people-group", "green")})
         output$box_marker <- renderInfoBox({renderInfoBoxUI("Marker", number_marker, "dna", "blue")})
-        output$box_number_missing_per <- renderInfoBox({renderInfoBoxUI("Percentage of<br>missing data",formatted_number_missing_per,"database","yellow")})
+        output$box_number_missing_per <- renderInfoBox({renderInfoBoxUI(HTML("Percentage of<br>missing data"),formatted_number_missing_per,"database","yellow")})
         
       } else if (input$file_format == 2) {
         # Check if "Microsatellite 1 column for all the alleles" is selected
@@ -231,7 +233,7 @@ server_import_data <- function(input, output, session) {
         output$box_population <- renderInfoBox({renderInfoBoxUI("Population", number_pop, "map-location-dot", "purple")})
         output$box_individuals <- renderInfoBox({renderInfoBoxUI("Individuals", number_indv, "people-group", "green")})
         output$box_marker <- renderInfoBox({renderInfoBoxUI("Marker", number_marker, "dna", "blue")})
-        output$box_number_missing_per <- renderInfoBox({renderInfoBoxUI("Percentage of<br>missing data",formatted_number_missing_per,"database","yellow")})
+        output$box_number_missing_per <- renderInfoBox({renderInfoBoxUI(HTML("Percentage of<br>missing data"),formatted_number_missing_per,"database","yellow")})
         
       } else if (input$file_format == 2) {
         # Check if "Microsatellite 1 column for all the alleles" is selected
