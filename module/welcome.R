@@ -1,6 +1,6 @@
 # welcome.R
 
-
+ 
 
 ## dashboard layout
 sidebar <- dashboardSidebar(
