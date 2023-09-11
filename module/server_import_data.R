@@ -2,12 +2,21 @@
 
 source("www/helper.R")
 
+empty_data <- tibble( read.csv("https://www.t-de-meeus.fr/Enseign/BoophilusAdultsDataCattle.txt", header = TRUE, sep = "\t"))
+
+
 server_import_data <- function(input, output, session) {
+  # Render the empty table using kable and kableExtra
+  output$empty_table <- renderUI({
+    HTML(kable(empty_data, format = "html") %>%
+           kable_styling(full_width = FALSE))
+  })
+  
   # Define the reactive expression to hold the data frame
   df <- reactiveVal()
   # Load default data when the button is clicked
   observeEvent(input$load_default_data, {
-    df( read.csv("https://www.t-de-meeus.fr/Enseign/BoophilusAdultsDataCattle.txt", header = input$header, sep = input$sep, quote = input$quote))
+    df( read.csv("https://www.t-de-meeus.fr/Enseign/BoophilusAdultsDataCattle.txt", header = input$header, sep = input$sep))
   })
   # Handle file upload
   observeEvent(input$file1, {req(input$file1)
