@@ -279,8 +279,7 @@ server_import_data <- function(input, output, session) {
             fillOpacity = 0.5
           )
       })
-      print(head(new_df))
-      
+
       write.csv(new_df, file = "data/filtered_data.csv")
       # Download map handler
       #      output$download_map <-  downloadHandler(
