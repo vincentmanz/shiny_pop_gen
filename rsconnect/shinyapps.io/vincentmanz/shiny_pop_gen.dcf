@@ -1,12 +1,12 @@
-name: parasiter
-title:
+name: shiny_pop_gen
+title: shiny_pop_gen
 username: vincentmanz
 account: vincentmanz
 server: shinyapps.io
 hostUrl: https://api.shinyapps.io/v1
-appId: 9757597
-bundleId: 7673997
-url: https://vincentmanz.shinyapps.io/parasiter/
+appId: 9837629
+bundleId:
+url: https://vincentmanz.shinyapps.io/shiny_pop_gen/
 version: 1
 asMultiple: FALSE
 asStatic: FALSE

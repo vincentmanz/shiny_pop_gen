@@ -1,6 +1,6 @@
 # server_general_stats.R 
 
-filtered_data <- read.csv("~/Downloads/data-2023-09-11 (2).csv", header = TRUE)
+filtered_data <- read.csv("data/data-2023-09-11 (2).csv", header = TRUE)
   
 # Define the server logic
 general_stats_server <- function(input, output, session) {
