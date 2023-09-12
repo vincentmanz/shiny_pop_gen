@@ -61,19 +61,20 @@ body <- dashboardBody(
           "This interactive Shiny app serves as a resource for both novice participants in the Empirical Population Genetics training course and researchers seeking to analyze ALFP or RAPD data. The app features multiple tabs designed to facilitate data processing and enhance understanding of the calculations.",
           "For more comprehensive insights and course details, please visit Thierry de Meuus' website:",
           "<a href='https://www.t-de-meeus.fr/EnseignMeeus.html' target='_blank'>https://www.t-de-meeus.fr/EnseignMeeus.html</a>",
-          sep = "<br/>"
+          sep = "<br/>",
+          linebreaks(5)
+          
         ),
-        paste("To utilize this application, begin by importing your data in the 
-              Data Import and Filtering tab. Once your data is loaded, you can proceed to execute any of the analyses available within the application.",
+        paste("</p>To make use of this application, start by importing your data in the  <strong>Data Import and Filtering</strong> tab. After your data has been successfully loaded, you can then proceed to perform any of the analyses offered within the application.",
               sep = "<br/>",
               linebreaks(5)
         )
       ),
       HTML(
-        "<h3>The data structure should be as follows:</h3>",
-        "<p style='margin-left: 20px;'>- One column for the Population identifier.</p>",
-        "<p style='margin-left: 20px;'>- The genetic marker can be encoded using the following patterns:</p>",
-        "<p style='margin-left: 20px;'>- The separator could be any symbol, here it is separated by  \"<span style='color: orange;'>/</span>\". </p>",
+        "<h3>Ideally, the data structure should be as follows:</h3>",
+        "<p style='margin-left: 20px;'>- One column one for The population identifier.</p>",
+        "<p style='margin-left: 20px;'>- A colunm range for the genetic markers. They can be encoded using the one column per allele or one column for two alleles.
+        The separator could be any symbol like: \"<span style='color: orange;'>/</span>\" or \"<span style='color: orange;'>:</span>\". </p>",
         "<div style='display: flex;'>",
         "<div style='flex: 1; display: flex; flex-direction: column;'>",  
         data_one_col %>%
@@ -96,7 +97,7 @@ body <- dashboardBody(
         
         "</div>",
         "<br>",
-        "<p style='margin-left: 20px;'>- Optional two columns for the GPS coordinates.</p>",
+        "<p style='margin-left: 20px;'>- Two columns with the GPS coordiantes.</p>",
         "<div style='margin-left: 40px;'>",
         data_gps %>%
           kable("html", align = 'l', caption = "Data frame with GPS coordinates") %>%
