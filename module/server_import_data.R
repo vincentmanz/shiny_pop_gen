@@ -1,37 +1,40 @@
+
 # server_import_data.R
 
 source("www/helper.R")
 
-empty_data <- tibble( read.csv("https://www.t-de-meeus.fr/Enseign/BoophilusAdultsDataCattle.txt", header = TRUE, sep = "\t"))
 
 server_import_data <- function(input, output, session) {
-  # Render the empty table using kable and kableExtra
-  output$empty_table <- renderUI({HTML(kable(empty_data, format = "html") %>% kable_styling(full_width = FALSE))})
+  
+  
   
   # Define the reactive expression to hold the data frame
   df <- reactiveVal()
-  
-  # Load default data when the button is clicked or handle file upload
-  observeEvent(input$load_default_data | input$file1, {
-    data_source <- if (input$load_default_data) {
-      "https://www.t-de-meeus.fr/Enseign/BoophilusAdultsDataCattle.txt"
-    } else {input$file1$datapath}
-    df(read.csv(data_source, header = input$header, sep = input$sep, quote = input$quote))
+  # Load default data when the button is clicked
+  observeEvent(input$load_default_data, {
+    df( read.csv("https://www.t-de-meeus.fr/Enseign/BoophilusAdultsDataCattle.txt", header = input$header, sep = input$sep))
   })
-  
+  # Handle file upload
+  observeEvent(input$file1, {req(input$file1)
+    df(read.csv(input$file1$datapath, header = input$header, sep = input$sep, quote = input$quote))
+  })
   # Handle filtering of data
-  observeEvent(input$run_filter, {req(df()) missing_code <- as.numeric(input$missing_code)
+  observeEvent(input$run_filter, {req(df())
+    missing_code <- as.numeric(input$missing_code)
     # Excluding columns
     excluded_cols <- unlist(strsplit(input$exclude_cols, ","))
-    if (!is.null(excluded_cols) && length(excluded_cols) > 0 && any(excluded_cols != "")) {
-      df_filtered <- df() %>% select(-any_of(excluded_cols))
+    if (!is.null(excluded_cols) &&
+        length(excluded_cols) > 0 && any(excluded_cols != "")) {
+      df_filtered <- df() %>%
+        select(-any_of(excluded_cols))
       df(df_filtered)
     }
     # Excluding rows
     excluded_rows <- unlist(strsplit(input$exclude_rows, "[, ]+"))
     excluded_rows <- as.integer(excluded_rows[excluded_rows != ""])
     if (length(excluded_rows) > 0) {
-      df_filtered <- df() %>% slice(-excluded_rows)
+      df_filtered <- df() %>%
+        slice(-excluded_rows)
       df(df_filtered)
     }
   })
@@ -43,12 +46,35 @@ server_import_data <- function(input, output, session) {
     updateSelectInput(session, 'latitude_data',choices = c("select" = "", colnames(df_local)))
     updateSelectInput(session, 'longitude_data', choices = c("select" = "", colnames(df_local)))
   })
-
-  # Create a reactiveValues object to store the results
-  result_data <- reactiveValues( number_pop = 0, number_indv = 0, number_marker = 0, number_missing = 0, number_missing_per = 0)
+  
+  # Render info boxes default
+  output$box_population <- renderInfoBox({renderInfoBoxUI("Population", 0, "map-location-dot", "purple")})
+  output$box_individuals <- renderInfoBox({renderInfoBoxUI("Individuals", 0, "people-group", "green")})
+  output$box_marker <- renderInfoBox({renderInfoBoxUI("Marker", 0, "dna", "blue")})
+  output$box_number_missing_per <- renderInfoBox({renderInfoBoxUI(HTML("Percentage of<br>missing data"),0,"database","yellow")})
+  
+  # Display  the loaded data frame 
+  output$contents <- renderTable({ req(df())})
+  # Display  an empty map world
+  output$map <- renderLeaflet({leaflet() %>% addTiles()})
+  
+  # Download data csv handler
+  output$download_csv <- downloadHandler(
+    filename = function() {
+      paste("data-", Sys.Date(), ".csv", sep = "")
+    },
+    content = function(file) {
+      write.csv(df(), file)  # df() should be the data you want to download
+    }
+  )
+  
   # Create the table and the map
   observeEvent(input$run_assign, {
-    req(input$pop_data, input$col_ranges_data, df())
+    req(
+      input$pop_data,
+      input$col_ranges_data,
+      df()
+    )
     missing_code <- input$missing_code
     df_local <- df()
     
@@ -82,8 +108,7 @@ server_import_data <- function(input, output, session) {
     range_values <- as.numeric(range_values)
     
     # Extract the range of column headers
-    column_range_name <-
-      colnames(df_local)[range_values[1]:range_values[2]]
+    column_range_name <- colnames(df_local)[range_values[1]:range_values[2]]
     
     # Determine if Latitude and Longitude are empty
     latitude_empty <- input$latitude_data == ""
@@ -96,7 +121,7 @@ server_import_data <- function(input, output, session) {
       new_df <- df_local[, cols_to_keep]  
       # Rename columns
       colnames(new_df)[1] ="Population"
-      head(new_df)
+      
       # Convert selected columns to numeric
       col_names <- colnames(new_df)
       cols_to_convert <- col_names[which(col_names %in% c(col_names[2:(1 + length(range_values))]))]
@@ -109,7 +134,7 @@ server_import_data <- function(input, output, session) {
         concatenated_data <- concat_identical_cols(locus, input$ploidy)
         df_formated <- cbind(new_df[, 1], concatenated_data, stringsAsFactors = FALSE)
         colnames(df_formated)[1] ="Population"
-        head(df_formated)
+        
         # Update df_assigned
         df(df_formated)
         
@@ -129,21 +154,23 @@ server_import_data <- function(input, output, session) {
         # Count the number of selected columns in col_ranges_data
         number_marker <- length(df_range_cols_markers)
         
-   
+        # Render the results table using renderUI                                # check necessity?
+        output$results_table_ui <- renderUI({ tableOutput("results_table")})
         # Render the actual results table
         output$results_table <- renderTable({ results_table})
+        
+        
         # Render info boxes
         output$box_population <- renderInfoBox({renderInfoBoxUI("Population", number_pop, "map-location-dot", "purple")})
         output$box_individuals <- renderInfoBox({renderInfoBoxUI("Individuals", number_indv, "people-group", "green")})
         output$box_marker <- renderInfoBox({renderInfoBoxUI("Marker", number_marker, "dna", "blue")})
-        output$box_number_missing_per <- renderInfoBox({renderInfoBoxUI("Percentage of<br>missing data",formatted_number_missing_per,"database","yellow")})
+        output$box_number_missing_per <- renderInfoBox({renderInfoBoxUI(HTML("Percentage of<br>missing data"),formatted_number_missing_per,"database","yellow")})
         
       } else if (input$file_format == 2) {
         # Check if "Microsatellite 1 column for all the alleles" is selected
         # Update df_assigned with new_df
         df(new_df)
       }
-      
     } else {
       # Check if latitude is not numeric
       if (is.numeric(input$latitude_data)) {
@@ -157,31 +184,29 @@ server_import_data <- function(input, output, session) {
       # Filter columns to keep in the new data frame
       cols_to_keep <- c(input$pop_data,input$latitude_data,input$longitude_data,column_range_name)
       new_df <- df_local[, cols_to_keep]
-      head(new_df)
-      print(178)
       
       # Rename columns
       col_names <- colnames(new_df)
-      col_names[2] <- "Population"
+      col_names[1] <- "Population"
       col_names[2] <- "Latitude"
       col_names[3] <- "Longitude"
       col_names[4:(3 + length(column_range_name))] <- column_range_name
-    # Convert selected columns to numeric
+      colnames(new_df) <- col_names
+      # Convert selected columns to numeric
       cols_to_convert <-
         col_names[which(col_names %in% c("Latitude", "Longitude", col_names[4:(3 + length(range_values))]))]
       new_df[, cols_to_convert] <-
         apply(new_df[, cols_to_convert], 2, as.numeric)
-      head(new_df)
-      print(190)
-
-      # Data formatting
+      
+      #### data formating       ####
       if (input$file_format == 1) {
         # Check if "Microsatellite 1 column per allele" is selected
-        locus <- new_df[, 4:(3 + length(seq(range_values[1], range_values[2])))]
-        concatenated_data <- concat_identical_cols(locus, input$ploidy)
-        df_formated <- cbind(new_df[, 1:3], concatenated_data, stringsAsFactors = FALSE)
-      }
-      
+        locus <-
+          new_df[, 4:(3 + length(seq(range_values[1], range_values[2])))]
+        concatenated_data <-
+          concat_identical_cols(locus, input$ploidy)
+        df_formated <-
+          cbind(new_df[, 1:3], concatenated_data, stringsAsFactors = FALSE)
         # Update df_assigned
         df(df_formated)
         
@@ -201,20 +226,27 @@ server_import_data <- function(input, output, session) {
         # Count the number of selected columns in col_ranges_data
         number_marker <- length(df_range_cols_markers)
         
+        # Render the results table using renderUI                                # check necessity?
+        output$results_table_ui <- renderUI({
+          tableOutput("results_table")
+        })
         # Render the actual results table
-        output$results_table <- renderTable({results_table})
+        output$results_table <- renderTable({
+          results_table
+        })
+        
+        
         # Render info boxes
         output$box_population <- renderInfoBox({renderInfoBoxUI("Population", number_pop, "map-location-dot", "purple")})
         output$box_individuals <- renderInfoBox({renderInfoBoxUI("Individuals", number_indv, "people-group", "green")})
         output$box_marker <- renderInfoBox({renderInfoBoxUI("Marker", number_marker, "dna", "blue")})
-        output$box_number_missing_per <- renderInfoBox({renderInfoBoxUI("Percentage of<br>missing data",formatted_number_missing_per,"database","yellow")})
+        output$box_number_missing_per <- renderInfoBox({renderInfoBoxUI(HTML("Percentage of<br>missing data"),formatted_number_missing_per,"database","yellow")})
         
       } else if (input$file_format == 2) {
         # Check if "Microsatellite 1 column for all the alleles" is selected
         # Update df_assigned with new_df
         df(new_df)
       }
-      
       ##### MAP ####
       # Create the populationsLL data frame
       populationsLL <- new_df[, 1:3]
@@ -247,7 +279,19 @@ server_import_data <- function(input, output, session) {
             fillOpacity = 0.5
           )
       })
+      print(head(new_df))
+      
       write.csv(new_df, file = "data/filtered_data.csv")
+      # Download map handler
+      #      output$download_map <-  downloadHandler(
+      #        filename = function() {
+      #          paste("map-", Sys.Date(), ".pdf")},
+      #        content = function(file) {
+      #          pdf(file, width = 8, height = 6)  # Adjust the width and height as needed
+      #          print(output$map)  # Print the map to the PDF
+      #          dev.off()  # Close the PDF device
+      #       }
+      #      )
     }
   })
 }

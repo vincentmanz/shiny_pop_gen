@@ -1,7 +1,7 @@
 # server_general_stats.R 
 
-filtered_data <- read.csv("data/filtered_data.csv")
-
+filtered_data <- read.csv("~/Downloads/data-2023-09-11 (2).csv", header = TRUE)
+  
 # Define the server logic
 general_stats_server <- function(input, output, session) {
   
@@ -19,19 +19,20 @@ general_stats_server <- function(input, output, session) {
       Fis = input$fis_checkbox,
       Dest = input$dest_checkbox
     )
-    
     selected_stats <- selected_stats[selected_stats]
     if (length(selected_stats) > 0) {
       # Prepare the concatenated_data and df_format_1
-      df_format_1 <- data.frame(indv = paste(substr(diploid_2C$Locality,1,3), row.names(diploid_2C), sep="."), filtered_data)
+      print(head(filtered_data))
+      df_format_1 <- filtered_data
+      df_format_1 <- data.frame(indv = paste(substr(df_format_1$Population,1,3), row.names(df_format_1), sep="."), filtered_data)
       # Create mydata_genind
-      population <- df_format_1$Locality
+      population <- df_format_1$Population
       mydata_genind <- df2genind(
-        X = concatenated_data,
+        X = df_format_1[,6:11],
         sep = "/",
         ncode = 6,
         ind.names = df_format_1$indv,
-        pop = df_format_1$Locality,
+        pop = df_format_1$Population,
         NA.char = "0/0",
         ploidy = 2,
         type = "codom",
