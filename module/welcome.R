@@ -10,9 +10,7 @@ header <- dashboardHeader(title = "GenoPop",
                                   class = "dropdown"))
 
 # line breaks function
-linebreaks <- function(n) {
-  HTML(strrep(br(), n))
-}
+linebreaks <- function(n) {HTML(strrep(br(), n))}
 
 # Create a data frame for the one example
 

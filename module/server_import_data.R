@@ -1,3 +1,4 @@
+
 # server_import_data.R
 
 source("www/helper.R")
@@ -54,7 +55,7 @@ server_import_data <- function(input, output, session) {
  
   # Display  the loaded data frame 
   output$contents <- renderTable({ req(df())})
-  # Display  an empty map monde
+  # Display  an empty map world
   output$map <- renderLeaflet({leaflet() %>% addTiles()})
   
   # Download data csv handler
@@ -107,8 +108,7 @@ server_import_data <- function(input, output, session) {
     range_values <- as.numeric(range_values)
     
     # Extract the range of column headers
-    column_range_name <-
-      colnames(df_local)[range_values[1]:range_values[2]]
+    column_range_name <- colnames(df_local)[range_values[1]:range_values[2]]
     
     # Determine if Latitude and Longitude are empty
     latitude_empty <- input$latitude_data == ""
@@ -121,7 +121,6 @@ server_import_data <- function(input, output, session) {
       new_df <- df_local[, cols_to_keep]  
       # Rename columns
       colnames(new_df)[1] ="Population"
-      
       
       # Convert selected columns to numeric
       col_names <- colnames(new_df)
@@ -188,18 +187,16 @@ server_import_data <- function(input, output, session) {
       
       # Rename columns
       col_names <- colnames(new_df)
-      col_names[2] <- "Population"
+      col_names[1] <- "Population"
       col_names[2] <- "Latitude"
       col_names[3] <- "Longitude"
-      col_names[4:(3 + length(column_range_name))] <-
-        column_range_name
+      col_names[4:(3 + length(column_range_name))] <- column_range_name
       colnames(new_df) <- col_names
       # Convert selected columns to numeric
       cols_to_convert <-
         col_names[which(col_names %in% c("Latitude", "Longitude", col_names[4:(3 + length(range_values))]))]
       new_df[, cols_to_convert] <-
         apply(new_df[, cols_to_convert], 2, as.numeric)
-      
       
       #### data formating       ####
       if (input$file_format == 1) {
@@ -282,6 +279,8 @@ server_import_data <- function(input, output, session) {
             fillOpacity = 0.5
           )
       })
+      print(head(new_df))
+      
       write.csv(new_df, file = "data/filtered_data.csv")
       # Download map handler
 #      output$download_map <-  downloadHandler(
