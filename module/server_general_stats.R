@@ -1,6 +1,6 @@
 # server_general_stats.R 
 
-filtered_data <- read.csv("~/Downloads/data-2023-09-11 (2).csv", header = TRUE)
+filtered_data <- read.csv("data/data-2023-10-09.csv", header = TRUE)
   
 # Define the server logic
 general_stats_server <- function(input, output, session) {
@@ -11,14 +11,13 @@ general_stats_server <- function(input, output, session) {
       Ho = input$ho_checkbox,
       Hs = input$hs_checkbox,
       Ht = input$ht_checkbox,
-      Dst = input$dst_checkbox,
-      Htp = input$htp_checkbox,
-      Dstp = input$dstp_checkbox,
-      Fst = input$fst_checkbox,
-      Fstp = input$fstp_checkbox,
+      Gst = input$gst_checkbox,
+      Gst2 = input$gst2_checkbox,
       Fis = input$fis_checkbox,
-      Dest = input$dest_checkbox
+      Fst = input$fst_checkbox
     )
+    print(selected_stats)
+    
     selected_stats <- selected_stats[selected_stats]
     if (length(selected_stats) > 0) {
       # Prepare the concatenated_data and df_format_1
@@ -39,6 +38,8 @@ general_stats_server <- function(input, output, session) {
         strata = NULL,
         hierarchy = NULL
       )
+      print(mydata_genind)
+      
       # Create mydata_hierfstat
       mydata_hierfstat <- genind2hierfstat(mydata_genind)
       # Run basic.stats and render the result
@@ -46,6 +47,7 @@ general_stats_server <- function(input, output, session) {
       df_resutl_basic<-as.data.frame(result$perloc)
       list_col_selected <- row.names(as.data.frame(selected_stats))
       df_resutl_basic_selec <- df_resutl_basic %>% select(all_of(list_col_selected))
+      print(2)
       output$basic_stats_result <- renderTable({
         req(df_resutl_basic_selec)
         return(df_resutl_basic_selec) 
