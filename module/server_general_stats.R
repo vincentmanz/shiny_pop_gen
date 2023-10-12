@@ -21,7 +21,6 @@ general_stats_server <- function(input, output, session) {
       # Prepare the concatenated_data and df_format_1
       filtered_data <- data.frame(indv = paste(substr(filtered_data$Population,1,3), row.names(filtered_data), sep="."), filtered_data)
       
-      print(selected_stats)
       # Create genind object
       population <- filtered_data$Population
       mydata_genind <- df2genind(
@@ -39,10 +38,9 @@ general_stats_server <- function(input, output, session) {
       # Convert to hierfstat
       mydata_hierfstat <- genind2hierfstat(mydata_genind)
       
-      # Run basic.stats
+      # Run basic.stats and render the result
       result <- basic.stats(mydata_hierfstat)
       df_resutl_basic<-as.data.frame(result$perloc)
-      list_col_selected <- row.names(as.data.frame(selected_stats))
       
       # Weir and Cockrham estimates of Fstatistics - FIS and FST 
       result_f_stats <- wc(mydata_hierfstat)
@@ -51,8 +49,11 @@ general_stats_server <- function(input, output, session) {
       result_f_stats <- merge(result_f_stats, df_resutl_basic,by="row.names",all.x=TRUE)
       colnames(result_f_stats)[10] <- "Fst (Nei)"
       colnames(result_f_stats)[12] <- "Fis (Nei)"
-      print(result_f_stats)
-      result_f_stats_selec <- result_f_stats %>% select(all_of(list_col_selected))
+      
+      #subset the table
+      select_df <- as.data.frame(selected_stats)
+      selected_stats <- rownames(select_df)
+      result_f_stats_selec <- result_f_stats %>% select(all_of(selected_stats))
       
       #  render the result
       output$basic_stats_result <- renderTable({
