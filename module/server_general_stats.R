@@ -11,10 +11,10 @@ general_stats_server <- function(input, output, session) {
       Ho = input$ho_checkbox,
       Hs = input$hs_checkbox,
       Ht = input$ht_checkbox,
-      "Fis(W&C)" = input$fisw_checkbox,
-      "Fst(W&C)" = input$fstw_checkbox,
-      "Fis(Nei)" = input$fisn_checkbox,
-      "Fst(Nei)" = input$fstn_checkbox
+      "Fis (W&C)" = input$fisw_checkbox,
+      "Fst (W&C)" = input$fstw_checkbox,
+      "Fis (Nei)" = input$fisn_checkbox,
+      "Fst (Nei)" = input$fstn_checkbox
     )
     selected_stats <- selected_stats[selected_stats]
     if (length(selected_stats) > 0) {
@@ -46,11 +46,11 @@ general_stats_server <- function(input, output, session) {
       
       # Weir and Cockrham estimates of Fstatistics - FIS and FST 
       result_f_stats <- wc(mydata_hierfstat)
-      result_f_stats <- as.data.frame(f_stats$per.loc)
-      colnames(result_f_stats) <- c("Fis(W&C)", "Fst(W&C)")
+      result_f_stats <- as.data.frame(result_f_stats$per.loc)
+      colnames(result_f_stats) <- c("Fis (W&C)", "Fst (W&C)")
       result_f_stats <- merge(result_f_stats, df_resutl_basic,by="row.names",all.x=TRUE)
-      colnames(result_f_stats)[10] <- "Fst(Nei)"
-      colnames(result_f_stats)[12] <- "Fis(Nei)"
+      colnames(result_f_stats)[10] <- "Fst (Nei)"
+      colnames(result_f_stats)[12] <- "Fis (Nei)"
       print(result_f_stats)
       result_f_stats_selec <- result_f_stats %>% select(all_of(list_col_selected))
       
