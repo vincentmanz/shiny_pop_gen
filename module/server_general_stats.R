@@ -1,6 +1,6 @@
 # server_general_stats.R 
 
-filtered_data <- read.csv("data/data-2023-10-09.csv", header = TRUE)
+filtered_data <- read.csv("data/data-2023-09-11 (2).csv", header = TRUE)
   
 # Define the server logic
 general_stats_server <- function(input, output, session) {
@@ -11,46 +11,53 @@ general_stats_server <- function(input, output, session) {
       Ho = input$ho_checkbox,
       Hs = input$hs_checkbox,
       Ht = input$ht_checkbox,
-      Gst = input$gst_checkbox,
-      Gst2 = input$gst2_checkbox,
-      Fis = input$fis_checkbox,
-      Fst = input$fst_checkbox
+      "Fis(W&C)" = input$fisw_checkbox,
+      "Fst(W&C)" = input$fstw_checkbox,
+      "Fis(Nei)" = input$fisn_checkbox,
+      "Fst(Nei)" = input$fstn_checkbox
     )
-    print(selected_stats)
-    
     selected_stats <- selected_stats[selected_stats]
     if (length(selected_stats) > 0) {
       # Prepare the concatenated_data and df_format_1
-      print(head(filtered_data))
-      df_format_1 <- filtered_data
-      df_format_1 <- data.frame(indv = paste(substr(df_format_1$Population,1,3), row.names(df_format_1), sep="."), filtered_data)
-      # Create mydata_genind
-      population <- df_format_1$Population
+      filtered_data <- data.frame(indv = paste(substr(filtered_data$Population,1,3), row.names(filtered_data), sep="."), filtered_data)
+      
+      print(selected_stats)
+      # Create genind object
+      population <- filtered_data$Population
       mydata_genind <- df2genind(
-        X = df_format_1[,6:11],
+        X = filtered_data[,6:11],
         sep = "/",
         ncode = 6,
-        ind.names = df_format_1$indv,
-        pop = df_format_1$Population,
+        ind.names = filtered_data$indv,
+        pop = filtered_data$Population,
         NA.char = "0/0",
         ploidy = 2,
         type = "codom",
         strata = NULL,
         hierarchy = NULL
       )
-      print(mydata_genind)
-      
-      # Create mydata_hierfstat
+      # Convert to hierfstat
       mydata_hierfstat <- genind2hierfstat(mydata_genind)
-      # Run basic.stats and render the result
+      
+      # Run basic.stats
       result <- basic.stats(mydata_hierfstat)
       df_resutl_basic<-as.data.frame(result$perloc)
       list_col_selected <- row.names(as.data.frame(selected_stats))
-      df_resutl_basic_selec <- df_resutl_basic %>% select(all_of(list_col_selected))
-      print(2)
+      
+      # Weir and Cockrham estimates of Fstatistics - FIS and FST 
+      result_f_stats <- wc(mydata_hierfstat)
+      result_f_stats <- as.data.frame(f_stats$per.loc)
+      colnames(result_f_stats) <- c("Fis(W&C)", "Fst(W&C)")
+      result_f_stats <- merge(result_f_stats, df_resutl_basic,by="row.names",all.x=TRUE)
+      colnames(result_f_stats)[10] <- "Fst(Nei)"
+      colnames(result_f_stats)[12] <- "Fis(Nei)"
+      print(result_f_stats)
+      result_f_stats_selec <- result_f_stats %>% select(all_of(list_col_selected))
+      
+      #  render the result
       output$basic_stats_result <- renderTable({
-        req(df_resutl_basic_selec)
-        return(df_resutl_basic_selec) 
+        req(result_f_stats_selec)
+        return(result_f_stats_selec) 
       })
     }
   })
