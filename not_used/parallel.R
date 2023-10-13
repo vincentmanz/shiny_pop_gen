@@ -42,11 +42,13 @@ colnames(result_f_stats)[12] <- "Fis (Nei)"
 result_f_stats_selec <- result_f_stats %>% select(all_of(selected_stats))
 
 
-library(tictoc)
+
+n_rep = 1000
+
+library(parallel)
 
 
-tic("parLapply")
-
+tic("parallel")
 
 # Number of CPU cores to use
 num_cores <- detectCores()
@@ -99,10 +101,7 @@ result_FST <- data.frame(do.call(cbind, lapply(results, function(x) x$FST)))
 result_FIS <- data.frame(do.call(cbind, lapply(results, function(x) x$FIS)))
 
 # Set row names
-rownames(result_FST) <- rownames(wc_result)
-rownames(result_FIS) <- rownames(wc_result)
+#rownames(result_FST) <- rownames(wc_result)
+#rownames(result_FIS) <- rownames(wc_result)
 
-# Print the result data frames
-print(result_FST)
-print(result_FIS)
 
