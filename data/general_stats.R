@@ -1,5 +1,5 @@
 filtered_data <- read.csv("data/data-2023-09-11 (2).csv", header = TRUE)
-filtered_data
+
 
 selected_stats <- c("Ho", "Hs", "Ht", "Fis (W&C)", "Fst (W&C)", "Fis (Nei)", "Fst (Nei)"
 )
@@ -42,29 +42,21 @@ colnames(result_f_stats)[12] <- "Fis (Nei)"
 result_f_stats_selec <- result_f_stats %>% select(all_of(selected_stats))
 
 
-library(tictoc)
+n_rep = 100
 
-
-tic("parLapply")
+library(parallel)
+library(dplyr)
 
 
 # Number of CPU cores to use
 num_cores <- detectCores()
 
-# Create a cluster for parallel processing
-cl <- makeCluster(num_cores)
-
-# Export necessary variables and functions to the cluster
-clusterExport(cl, c("mydata_hierfstat", "wc", "n_rep"))
-
 # Set result storage for each statistic in each worker
-clusterEvalQ(cl, {
-  result_FST <- numeric(n_rep)
-  result_FIS <- numeric(n_rep)
-})
+result_FST <- numeric(n_rep)
+result_FIS <- numeric(n_rep)
 
-# Parallel loop
-results <- parLapply(cl, 1:n_rep, function(i) {
+# Parallel loop using mclapply
+results <- mclapply(1:n_rep, mc.cores = num_cores, function(i) {
   set.seed(i)  # Set a different seed for each worker
   wc_results_FST <- numeric(n_rep)  # Create a result vector for each worker
   wc_results_FIS <- numeric(n_rep)  # Create a result vector for each worker
@@ -74,7 +66,7 @@ results <- parLapply(cl, 1:n_rep, function(i) {
     
     # Shuffle the data in columns 3 to 7
     shuffled_data <- mydata_hierfstat
-    shuffled_data[, 3:7] <- shuffled_data[, sample(3:7)]
+    shuffled_data[, 3:7] <- mydata_hierfstat[, sample(3:7)]
     
     # Compute the wc (replace 'wc_function' with the actual function you want to use)
     wc_result <- wc(shuffled_data)
@@ -91,9 +83,6 @@ results <- parLapply(cl, 1:n_rep, function(i) {
   return(list(FST = result_FST, FIS = result_FIS))
 })
 
-# Close the cluster
-stopCluster(cl)
-
 # Combine results into data frames
 result_FST <- data.frame(do.call(cbind, lapply(results, function(x) x$FST)))
 result_FIS <- data.frame(do.call(cbind, lapply(results, function(x) x$FIS)))
@@ -103,6 +92,22 @@ rownames(result_FST) <- rownames(wc_result)
 rownames(result_FIS) <- rownames(wc_result)
 
 # Print the result data frames
-print(result_FST)
-print(result_FIS)
+#print(result_FST)
+#print(result_FIS)
 
+#parLapply: 84.537 sec elapsed
+#mclapply: 75.443 sec elapsed
+
+# Define the reference FST values
+reference_FST <- result_f_stats$FST
+# Calculate the percentage of times shuffled FST values are greater
+percentage_greater <- round(rowMeans(result_FST > reference_FST) * 100, 3)
+
+# Format the percentages with exactly three decimal places
+formatted_percentages <- sprintf("%.3f", percentage_greater)
+
+# Create a data frame with the formatted percentages
+percentage_data <- data.frame(Percentage = formatted_percentages)
+
+# Print the data frame
+print(percentage_data)
