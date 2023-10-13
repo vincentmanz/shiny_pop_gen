@@ -1,72 +1,103 @@
-# Load the required GPU libraries
-library(gpuR)
+mat  <- mydata_hierfstat
+head(mat)
 
-# Convert your data to a numeric matrix (assuming filtered_data is a data frame)
-gpu_data <- as.matrix(filtered_data[, 6:11])
+n_rep=10
 
-gpu_data <- matrix(as.numeric(unlist(strsplit(gpu_data, "/"))), ncol = 2, byrow = TRUE)
+shuffled_matrices <- replicate(n_rep, mat[sample(nrow(mat)), ], simplify = FALSE)
 
-# Allocate a GPU matrix and transfer data
-data_gpu <- gpuMatrix(gpu_data)
+# Create a list to store the wc
+fst_df <- numeric(n_rep)
+fis_df <- numeric(n_rep)
 
-# Define a GPU function for shuffling pairs of values
-shuffle_gpu <- gpuKernel(code = "
-__global__ void shuffle_GPU(gpuMatrix data_gpu, int n) {
-  int tid = blockIdx.x * blockDim.x + threadIdx.x;
-  int i = tid;  // Index for the row
+# Calculate the average for each shuffled matrix
 
-  if (i < n) {
-    int j = i % 6;  // Index to shuffle pairs (0 to 5)
-
-    // Extract and shuffle the pair of values
-    int tmp = data_gpu[i + j * n];
-    data_gpu[i + j * n] = data_gpu[i + ((j + 1) % 6) * n];
-    data_gpu[i + ((j + 1) % 6) * n] = tmp;
-  }
-}
-", options = list("nV", nrow(data_gpu)))
-
-# Note: This code defines a CUDA kernel, so the syntax is different from regular R code.
-# It uses C-like syntax for GPU parallel processing.
-
-# To shuffle data on the GPU using the kernel:
-shuffle_gpu(data_gpu, nrow(data_gpu))
-
-
-# Number of GPU cores to use
-num_gpu_cores <- nrow(gpu_data)
-
-# Set the number of repetitions
-n_rep <- 100
-
-# Create storage for results
-result_FST <- matrix(0, n_rep, n_rep)
-result_FIS <- matrix(0, n_rep, n_rep)
-
-# Perform parallel computations on the GPU
+# Iterate through the shuffled matrices
 for (i in 1:n_rep) {
-  for (j in 1:n_rep) {
-    # Shuffle the data on the GPU
-    shuffle_gpu(data_gpu, threads = num_gpu_cores)
-    
-    # Copy the shuffled data back to the CPU
-    shuffled_data <- as.matrix(data_gpu)
-    
-    # Compute the statistics on the shuffled data (you'll need GPU-compatible functions)
-    # Replace the code below with GPU-compatible FST and FIS computations
-    wc_result_FST <- 0
-    wc_result_FIS <- 0
-    
-    # Store the FST and FIS results
-    result_FST[i, j] <- wc_result_FST
-    result_FIS[i, j] <- wc_result_FIS
-  }
+  # Calculate the statistics for the i-th matrix
+  result_f_stats <- wc(shuffled_matrices[[i]])
+  result_f_stats <- as.data.frame(result_f_stats$per.loc)
+  # Extract FST and FIS values
+  fst_values <- result_f_stats$per.loc$FST
+  fis_values <- result_f_stats$per.loc$FIS
+  # Assign values to the data frames
+  fst_df <- cbind(fst_df, result_f_stats$FST)
+  fis_df <- cbind(fis_df, result_f_stats$FIS)
 }
 
-# Combine the results into data frames (if needed)
-result_FST_df <- as.data.frame(result_FST)
-result_FIS_df <- as.data.frame(result_FIS)
+# Set row names as in result_f_stats
+rownames(fst_df) <- rownames(fis_df) <- rownames(result_f_stats$per.loc)
+fst_df <- fst_df[, -1]
+fis_df <-fis_df[, -1]
+vec <- seq(1, n_rep)
+colnames(fst_df) <- colnames(fis_df) <- vec
 
-# Print or use the results as needed
-print(result_FST_df)
-print(result_FIS_df)
+
+
+
+
+
+wc(as.data.frame(shuffled_matrices[[839]]))
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# Combine the shuffled columns into a new matrix
+shuffled_mat <- do.call(cbind, shuffled_matrices)
+
+
+
+
+
+
+# Set the column and row names
+colnames(shuffled_mat) <- colnames(mat)
+rownames(shuffled_mat) <- rownames(mat)
+
+# Print the shuffled matrix
+print(shuffled_mat)
+
+
+
+
+
+# Calculate average for each column
+averages <- sapply(shuffled_matrices, function(mat) colMeans(mat))
+
+# Create data frame with column names and iteration numbers
+result <- data.frame(matrix(NA, nrow = length(names(df)), ncol = 1000))
+colnames(result) <- 1:1000
+rownames(result) <- names(df)
+
+# Fill in the result data frame with average values
+for (i in 1:1000) {
+  result[, i] <- averages[, i]
+}
+
+#result Specify the range for random integers
+min_value <- 1
+max_value <- 10
+
+# Create a matrix with random integers
+mat <- matrix(sample(min_value:max_value, 7 * 7, replace = TRUE), nrow = 7, ncol = 7)
+
+# Set the column and row names
+colnames(mat) <- paste0(letters[1:7], "1")
+rownames(mat) <- paste0(letters[1:7], "2")
+
+# Print the matrix
+print(mat)
+
+
+
+

@@ -1,9 +1,18 @@
+
+### Parameters 
+
 filtered_data <- read.csv("data/data-2023-09-11 (2).csv", header = TRUE)
 
 
 selected_stats <- c("Ho", "Hs", "Ht", "Fis (W&C)", "Fst (W&C)", "Fis (Nei)", "Fst (Nei)"
 )
 
+
+n_rep=10
+
+sequence_length <- length(6:11) 
+
+######
 
 filtered_data <- filtered_data
 filtered_data <- data.frame(indv = paste(substr(filtered_data$Population,1,3), row.names(filtered_data), sep="."), filtered_data)
@@ -40,74 +49,72 @@ colnames(result_f_stats)[10] <- "Fst (Nei)"
 colnames(result_f_stats)[12] <- "Fis (Nei)"
 
 result_f_stats_selec <- result_f_stats %>% select(all_of(selected_stats))
+mat  <- mydata_hierfstat[,2:7]
+level_pop <- mydata_hierfstat[,1]
+head(mat)
 
 
-n_rep = 100
 
-library(parallel)
-library(dplyr)
+#shuffled_matrices <- replicate(n_rep, mat[sample(nrow(mat)), ], simplify = FALSE)
+shuffled_matrices <- replicate(n_rep, mat[sample(length(mat), replace = FALSE)], simplify = FALSE)
+##################
+# shuffle only the genotype and add the pop column later for each matrices. 
+#in the loop? 
+###############
 
 
-# Number of CPU cores to use
-num_cores <- detectCores()
+# Create a list to store the wc
+fst_df <- numeric(sequence_length)
+fis_df <- numeric(sequence_length)
 
-# Set result storage for each statistic in each worker
-result_FST <- numeric(n_rep)
-result_FIS <- numeric(n_rep)
+# Calculate the average for each shuffled matrix
 
-# Parallel loop using mclapply
-results <- mclapply(1:n_rep, mc.cores = num_cores, function(i) {
-  set.seed(i)  # Set a different seed for each worker
-  wc_results_FST <- numeric(n_rep)  # Create a result vector for each worker
-  wc_results_FIS <- numeric(n_rep)  # Create a result vector for each worker
-  
-  for (j in 1:n_rep) {
-    library(dplyr)
-    
-    # Shuffle the data in columns 3 to 7
-    shuffled_data <- mydata_hierfstat
-    shuffled_data[, 3:7] <- mydata_hierfstat[, sample(3:7)]
-    
-    # Compute the wc (replace 'wc_function' with the actual function you want to use)
-    wc_result <- wc(shuffled_data)
-    wc_result <- as.data.frame(wc_result$per.loc)
-    
-    # Store the FST and FIS results
-    wc_result_FST <-  wc_result %>% select(FST)
-    wc_result_FIS <- wc_result %>% select(FIS)
-  }
-  
-  result_FST <- wc_result_FST
-  result_FIS <- wc_result_FIS
-  
-  return(list(FST = result_FST, FIS = result_FIS))
-})
+# Iterate through the shuffled matrices
+for (i in 1:n_rep) {
+  # Calculate the statistics for the i-th matrix
+  #HERE THE COLUMN POP
+  merged_df <- cbind(level_pop, shuffled_matrices[[i]])
+  result_f_stats <- wc(shuffled_matrices[[i]]) ######################################## Error in 1:sum(data[, 1] == i) : NA/NaN argument
+  result_f_stats <- as.data.frame(result_f_stats$per.loc)
+  # Extract FST and FIS values
+  fst_values <- result_f_stats$FST
+  fis_values <- result_f_stats$FIS
+  print( fst_values)
+  # Assign values to the data frames
+  fst_df <- cbind(fst_df, result_f_stats$FST)
+  fis_df <- cbind(fis_df, result_f_stats$FIS)
+}
 
-# Combine results into data frames
-result_FST <- data.frame(do.call(cbind, lapply(results, function(x) x$FST)))
-result_FIS <- data.frame(do.call(cbind, lapply(results, function(x) x$FIS)))
+# Set row names as in result_f_stats
 
-# Set row names
-rownames(result_FST) <- rownames(wc_result)
-rownames(result_FIS) <- rownames(wc_result)
+rownames(fst_df) <- rownames(fis_df) <- rownames(result_f_stats)
+result_FST <- fst_df[, -1]
+fis_df <-fis_df[, -1]
+vec <- seq(1, n_rep)
+colnames(result_FST) <- colnames(fis_df) <- vec
 
-# Print the result data frames
-#print(result_FST)
-#print(result_FIS)
 
-#parLapply: 84.537 sec elapsed
-#mclapply: 75.443 sec elapsed
+result_FST[1,] 
 
-# Define the reference FST values
-reference_FST <- result_f_stats$FST
-# Calculate the percentage of times shuffled FST values are greater
-percentage_greater <- round(rowMeans(result_FST > reference_FST) * 100, 3)
+count (result_f_stats[,1][1] > result_FST[1,] )
+count <- sum(result_f_stats[,1][1] > result_FST[1, ])
 
-# Format the percentages with exactly three decimal places
-formatted_percentages <- sprintf("%.3f", percentage_greater)
 
-# Create a data frame with the formatted percentages
-percentage_data <- data.frame(Percentage = formatted_percentages)
 
-# Print the data frame
-print(percentage_data)
+# Initialize an empty data frame to store the counts
+count_df <- data.frame(
+  Greater = numeric(length(result_FST)),
+  Smaller = numeric(length(result_FST))
+)
+
+# Compare the values in result_f_stats[1] to result_FST for each column
+for (col in colnames(result_FST)) {
+  greater_count <- sum(result_f_stats[1] > result_FST[, col])
+  smaller_count <- sum(result_f_stats[1] < result_FST[, col])
+  count_df$Greater[col] <- greater_count
+  count_df$Smaller[col] <- smaller_count
+}
+
+# Print the count data frame
+print(count_df)
+
