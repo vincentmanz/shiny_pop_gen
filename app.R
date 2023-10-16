@@ -12,6 +12,8 @@ library(shinydashboardPlus)
 library(hierfstat)
 library(kableExtra)
 library(adegenet)
+library(tidyverse)
+
 
 # Source server and UI files
 source("module/server_import_data.R")
