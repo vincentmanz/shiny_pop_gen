@@ -13,6 +13,8 @@ selected_stats <- c("Ho", "Hs", "Ht", "Fis (W&C)", "Fst (W&C)", "Fis (Nei)", "Fs
 
 n_rep=10
 
+n_pop = 8
+
 sequence_length <- length(6:11) 
 ```
 
@@ -66,7 +68,25 @@ result_f_stats_selec <- result_f_stats %>% select(all_of(selected_stats))
 result_f_stats_selec
 ```
 
+# G-statistic
 
+```{r}
+library(hrbrthemes)
+
+
+# compute the Gstats
+result_f_stats <- result_f_stats %>% mutate(GST = 1-Hs/Ht)
+result_f_stats <- result_f_stats %>% mutate("GST''" = (n_pop*(Ht-Hs))/((n_pop*Hs-Ht)*(1-Hs)))
+result_f_stats
+
+# Plot with linear trend
+p2 <- ggplot(result_f_stats, aes(x=GST, y=Hs)) +
+  geom_point() +
+  geom_smooth(method=lm , color="red", se=FALSE) +
+  theme_ipsum()
+p2
+
+```
 
 # Missing data
 
@@ -205,12 +225,7 @@ print(count_df)
 
 ```
 
-#
 
-```{r}
-
-
-```
 
 #
 
