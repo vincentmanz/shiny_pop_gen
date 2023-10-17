@@ -724,3 +724,12 @@ Markov chain parameters:
 Dememorization:              10000
 Batches:                     20
 Iterations per batch:        5000
+
+Genepop4.8.2, Probability test:
+
+Estimation of exact P-Values by the Markov chain method. 
+---------------------------------------------
+Markov chain parameters:
+Dememorization:              10000
+Batches:                     20
+Iterations per batch:        5000

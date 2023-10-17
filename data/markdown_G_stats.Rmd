@@ -1,37 +1,47 @@
 ---
-title: "R Notebook"
-output: html_notebook
-editor_options: 
+title: "GenePop - general stats"
+output:
+  html_document:
+    df_print: paged
+editor_options:
   chunk_output_type: inline
 ---
 
-# Parameters 
+# Draft for the section general stats
 
-```{r}
-filtered_data <- read.csv("data/data-2023-09-11 (2).csv", header = TRUE)
+## Parameters 
 
-selected_stats <- c("Ho", "Hs", "Ht", "Fis (W&C)", "Fst (W&C)", "Fis (Nei)", "Fst (Nei)"
-)
+Inherited parameter and data from the import tab. 
 
-n_rep=10
+```{r Parameters, tidy = TRUE}
+filtered_data <-
+  read.csv("../data/data-2023-09-11 (2).csv", header = TRUE)
 
+selected_stats <-
+  c("Ho", "Hs", "Ht", "Fis (W&C)", "Fst (W&C)", "Fis (Nei)", "Fst (Nei)")
+
+n_rep = 100
+n_marker = 6
 n_pop = 8
 
 sequence_length <- length(6:11) 
 ```
 
+## data filtering convertion
 
-
-# data filtering convertion
-
-```{r}
+```{r data filtering, tidy = TRUE, results='hide', message=FALSE}
 library(hierfstat)
 library(adegenet)
-filtered_data <- data.frame(indv = paste(substr(filtered_data$Population,1,3), row.names(filtered_data), sep="."), filtered_data)
+filtered_data <-
+  data.frame(indv = paste(
+    substr(filtered_data$Population, 1, 3),
+    row.names(filtered_data),
+    sep = "."
+  ), filtered_data)
 # Create mydata_genind
 population <- filtered_data$Population
 mydata_genind <- df2genind(
-  X = filtered_data[,6:11],
+  X = filtered_data[, 6:11],
   sep = "/",
   ncode = 6,
   ind.names = filtered_data$indv,
@@ -46,53 +56,9 @@ mydata_genind
 mydata_hierfstat <- genind2hierfstat(mydata_genind)
 ```
 
+## Missing data
 
-
-# Run basic.stats and render the result
-
-```{r}
-library(pegas)
-library(dplyr)
-library(tibble)
-
-result <- basic.stats(mydata_hierfstat)
-df_resutl_basic<-as.data.frame(result$perloc)
-
-# Weir and Cockrham estimates of Fstatistics - FIS and FST 
-result_f_stats <- Fst(as.loci(mydata_genind), na.alleles = "")
-result_f_stats <- result_f_stats[,2:3]
-colnames(result_f_stats) <- c("Fst (W&C)", "Fis (W&C)")
-result_f_stats <- merge(result_f_stats, df_resutl_basic, by="row.names",all.x=TRUE)
-colnames(result_f_stats)[10] <- "Fst (Nei)"
-colnames(result_f_stats)[12] <- "Fis (Nei)"
-result_f_stats <- result_f_stats %>% column_to_rownames(., var = 'Row.names')
-result_f_stats_selec <- result_f_stats %>% select(all_of(selected_stats))
-result_f_stats_selec
-```
-
-# G-statistic
-
-```{r}
-library(hrbrthemes)
-library(ggplot2)
-
-# compute the Gstats
-result_f_stats <- result_f_stats %>% mutate(GST = 1-Hs/Ht)
-result_f_stats <- result_f_stats %>% mutate("GST''" = (n_pop*(Ht-Hs))/((n_pop*Hs-Ht)*(1-Hs)))
-result_f_stats
-
-# Plot with linear trend
-p2 <- ggplot(result_f_stats, aes(x=GST, y=Hs)) +
-  geom_point() +
-  geom_smooth(method=lm , color="red", se=FALSE) +
-  theme_ipsum()
-p2
-
-```
-
-# Missing data
-
-```{r}
+```{r Missing,tidy = TRUE}
 # Libraries
 library("poppr")
 library("heatmaply")
@@ -122,102 +88,156 @@ p <- heatmaply(mat,
 p
 ```
 
+## Run basic.stats and render the result
 
+```{r basic.stats,tidy = TRUE}
+library(pegas)
+library(dplyr)
+library(tibble)
 
-# HW - Panmixia
+result <- basic.stats(mydata_hierfstat) #hierfstat
+df_resutl_basic<-as.data.frame(result$perloc)
 
-```{r}
-
-
-library("pegas")
-
-hw.test(as.loci(mydata_genind), B = 1000)
-
-
-library(genepop)
-#https://cran.r-project.org/web/packages/genepop/genepop.pdf
-genepop_HW <- test_HW(
-  inputFile = "data/mydata.genepop.txt",
-  which = "Proba",
-  outputFile = "",
-  settingsFile = "",
-  enumeration = FALSE,
-  dememorization = 10000,
-  batches = 20,
-  iterations = 5000,
-  verbose = interactive()
-)
-
-genepop_HWtable <- HWtable_analysis(
-  inputFile = "data/mydata.genepop.txt",
-  which = "Proba",
-  settingsFile = "",
-  enumeration = FALSE,
-  dememorization = 10000,
-  batches = 20,
-  iterations = 5000,
-  verbose = interactive()
-)
+# Weir and Cockrham estimates of Fstatistics - FIS and FST 
+result_f_stats <- Fst(as.loci(mydata_genind), na.alleles = "") #pegas
+result_f_stats <- result_f_stats[,2:3]
+colnames(result_f_stats) <- c("Fst (W&C)", "Fis (W&C)")
+result_f_stats <- merge(result_f_stats, df_resutl_basic, by="row.names",all.x=TRUE)
+colnames(result_f_stats)[10] <- "Fst (Nei)"
+colnames(result_f_stats)[12] <- "Fis (Nei)"
+result_f_stats <- result_f_stats %>% column_to_rownames(., var = 'Row.names')
+result_f_stats_selec <- result_f_stats %>% select(all_of(selected_stats))
+result_f_stats_selec
 ```
 
+## G-statistic
 
+```{r G-statistic, tidy = TRUE}
+library(hrbrthemes)
+library(ggplot2)
 
-# Linkage Disequilibrium
+# compute the Gstats
+result_f_stats <- result_f_stats %>% mutate(GST = 1-Hs/Ht)
+result_f_stats <- result_f_stats %>% mutate("GST''" = (n_pop*(Ht-Hs))/((n_pop*Hs-Ht)*(1-Hs)))
+result_f_stats
 
-```{r}
+# Plot with linear trend
+p2 <- ggplot(result_f_stats, aes(x=GST, y=Hs)) +
+  geom_point() +
+  geom_smooth(method=lm , color="red", se=FALSE) +
+  theme_ipsum()
+p2
 
-LD(as.loci(mydata_genind$tab), locus = c(1, 2), details = TRUE)
+```
 
-a<-LDscan(as.loci(mydata_hierfstat[,2:7]))
+## HW - Panmixia
+### with pegas
 
-LDmap(a)
+```{r Panmixia_pegas,tidy = TRUE}
 
+library("pegas")
+hw.test(as.loci(mydata_genind), B = n_rep)
 
-head(mydata_hierfstat[,2:7])
+```
 
+### with genepop
 
+```{r Panmixia_genepop,tidy = TRUE, results='hide', message=FALSE}
 library(radiator)
 #https://thierrygosselin.github.io/radiator/reference/genomic_converter.html
 #https://thierrygosselin.github.io/radiator/articles/rad_genomics_computer_setup.html
 
-mydata1 <- genomic_converter(mydata_genind, parallel.core = parallel::detectCores() - 1, output = "genepop", filename = "../data/mydata.genepop.txt")
-mydata1 <- tidy_genind(mydata_genind, tidy = TRUE, write = FALSE, verbose = TRUE)
-
-detect_all_missing()
-
+#mydata1 <- genomic_converter(mydata_genind, parallel.core = parallel::detectCores() - 1, output = "genepop", filename = "mydata.genepop.txt")
 
 library(genepop)
+# https://cran.r-project.org/web/packages/genepop/genepop.pdf
+#genepop_HW <- test_HW(
+#  inputFile = "05_radiator_genomic_converter_20231017@1623/mydata.genepop.txt",
+#  which = "Proba",
+#  outputFile = "",
+#  settingsFile = "",
+#  enumeration = FALSE,
+#  dememorization = 10000,
+#  batches = 20,
+#  iterations = 5000,
+#  verbose = interactive()
+#)
+```
 
+## Linkage Disequilibrium
+I have found different values from Fstats. 
 
-test_LD(
-  inputFile = "data/mydata.genepop.txt",
+### with poppr
+The index of association was originally developed by A.H.D. Brown analyzing population structure of wild barley (Brown, 1980).
+
+**Ia**: The index of association.
+**p.Ia**: The p-value resulting from a one-sided permutation test based on the number of samples indicated in the original call.
+**rbard**: The standardized index of association.
+**p.rd**: The p-value resulting from a one-sided permutation test based on the number of samples indicated in the original call.
+
+**pair.ia** calculates the index of association in a pairwise manner among all loci.
+
+```{r Linkage_poppr, cache=TRUE}
+loci_pair <- pair.ia(mydata_genind, sample = n_rep, quiet = FALSE, method = 1,plot = FALSE)
+loci_pair
+```
+
+### with genepop
+
+“Genotypes at one locus are independent from genotypes at the other locus”. For a pair of diploid loci, no assumption is made about the gametic phase in double heterozygotes. In particular, it is not inferred assuming one-locus HW equilibrium, as such equilibrium is not assumed anywhere in the formulation of the test. The test is thus one of association between diploid genotypes at both loci, sometimes described as a test of the composite linkage disequilibrium (Bruce S. Weir 1996, 126–28). 
+ Contingency tables are created for all pairs of loci in each sample, then a G test or a probability test for each table is computed for each table using the Markov chain algorithm of Raymond and Rousset (1995a). The number of switches of the algorithm is given for each table analyzed.
+
+```{r Linkage_genepop,tidy = TRUE}
+library(genepop)
+outfile <- test_LD(
+  inputFile = "05_radiator_genomic_converter_20231017@1623/mydata.genepop.txt",
   outputFile = "",
   settingsFile = "",
   dememorization = 10000,
   batches = 100,
-  iterations = 5000,
+  iterations = n_rep,
   verbose = interactive()
 )
-
-#Fst(
-#  inputFile = "data/mydata.genepop.txt",
-#  sizes = FALSE,
-#  pairs = FALSE,
-#  outputFile = "",
-#  dataType = "Diploid",
-#  verbose = interactive()
-#)
-
-library("poppr") 
-pair.ia(mydata_genind, sample = 500, quiet = FALSE, method = 3 )
-# working but different values
+readLines(outfile)[136:155]
 
 ```
 
+### with pegas
 
-# shuffle df
+LD2 is based on the observed frequencies of different genotypes (Schaid 2004).
 
-```{r}
+```{r Linkage_pegas,tidy = TRUE}
+
+mat_alleles <- filtered_data %>% select(Population)
+mat_alleles  <- cbind(mat_alleles, filtered_data[,6:11])
+mat_alleles_loci <- alleles2loci(mat_alleles,  ploidy = 1, population = 1, phased = FALSE)
+linkage_pegas <- LD2(mat_alleles_loci)
+print(linkage_pegas$T2)
+```
+
+We thus accept the null hypothesis of no linkage among markers (P-val = 0.02313167)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+######################## DEVELOPMENT ######################## 
+################# not ready for deployment ##################
+
+## panmixia Fstat - shuffle df
+
+```{r panmixia}
 
 #shuffled_matrices <- replicate(n_rep, mat[sample(nrow(mat)), ], simplify = FALSE)
 shuffled_matrices <- replicate(n_rep, mat[sample(length(mat), replace = FALSE)], simplify = FALSE)
@@ -288,58 +308,18 @@ print(count_df)
 
 
 
-#
+## File export 
 
-```{r}
+```{r export}
+library(radiator)
 
-
-```
-
-#
-
-```{r}
-
-
-```
-
-#
-
-```{r}
-
-
-```
-
-#
-
-```{r}
-
-
-```
-
-#
-
-```{r}
-
-
-```
-
-#
-
-```{r}
-
-
-```
-
-#
-
-```{r}
-
-
-```
-
-#
-
-```{r}
-
-
+genomic_converter(
+  data,
+  strata = NULL,
+  output = NULL,
+  filename = NULL,
+  parallel.core = parallel::detectCores() - 1,
+  verbose = TRUE,
+  ...
+)
 ```

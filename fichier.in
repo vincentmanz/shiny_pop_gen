@@ -1,18 +1,14 @@
-data/mydata.genepop.txt
- 8  6
- 199  A12
- 203  B12
- 168  C03
- 192  C07
- 160  D10
- 118  D12
-Bou.9
-Bou.99
-Can.250
-Gad.321
-LaF.401
-Poq.508
-Por.674
-Sar.698
-10-16-2023
-22:26:39
+sample.txt
+ 4  6
+ 3  ADH Locus 1
+ 100  ADH #2
+ 4  ADH three
+ 8  ADH-4
+ 11  ADH-5
+ 2  mtDNA
+Grange des Peres  
+Tertre Roteboeuf 
+Bonneau 05   
+last pop
+10-17-2023
+16:31:57
