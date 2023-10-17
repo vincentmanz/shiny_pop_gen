@@ -110,6 +110,26 @@ result_f_stats_selec <- result_f_stats %>% select(all_of(selected_stats))
 result_f_stats_selec
 ```
 
+## missing data / FIS
+
+```{r G-statistic, tidy = TRUE}
+a <- result_f_stats_selec %>% select('Fis (W&C)')
+
+require(tidyverse)
+b <- as_tibble(mat) %>% filter(row_number()==n()) %>%  rownames_to_column %>% gather(variable, value, -rowname) %>%  spread(rowname, value) %>%  slice(1:(n() - 1)) %>% column_to_rownames('variable')
+colnames(b) <- ('Missing %')
+c <- merge(a, b, by="row.names",all.x=TRUE) %>% column_to_rownames('Row.names')
+
+# Plot with linear trend
+p1 <- ggplot(c, aes(x=`Missing %`, y=`Fis (W&C)`)) +
+  geom_point() +
+  theme_ipsum()
+p1
+
+```
+
+
+
 ## G-statistic
 
 ```{r G-statistic, tidy = TRUE}
@@ -177,6 +197,10 @@ The index of association was originally developed by A.H.D. Brown analyzing popu
 
 **pair.ia** calculates the index of association in a pairwise manner among all loci.
 
+method = 1: Permute Alleles This will redistribute all alleles in the sample throughout the locus. Missing data is fixed in place. This maintains allelic structure, but heterozygosity is variable.
+
+method = 4: Multilocus Style Permutation This will shuffle the genotypes at each locus, maintaining the heterozygosity and allelic structure.
+
 ```{r Linkage_poppr, cache=TRUE}
 loci_pair <- pair.ia(mydata_genind, sample = n_rep, quiet = FALSE, method = 1,plot = FALSE)
 loci_pair
@@ -215,7 +239,6 @@ linkage_pegas <- LD2(mat_alleles_loci)
 print(linkage_pegas$T2)
 ```
 
-We thus accept the null hypothesis of no linkage among markers (P-val = 0.02313167)
 
 
 
@@ -237,7 +260,7 @@ We thus accept the null hypothesis of no linkage among markers (P-val = 0.023131
 
 ## panmixia Fstat - shuffle df
 
-```{r panmixia}
+```{r panmixia, eval = FALSE }
 
 #shuffled_matrices <- replicate(n_rep, mat[sample(nrow(mat)), ], simplify = FALSE)
 shuffled_matrices <- replicate(n_rep, mat[sample(length(mat), replace = FALSE)], simplify = FALSE)
@@ -306,11 +329,78 @@ print(count_df)
 
 ```
 
+```{r shuffle, eval = FALSE }
+library(poppr)
+library(pegas)
+library(dplyr)
+library(tibble)
+#Permute Alleles This will redistribute all alleles in the sample throughout the locus. Missing data is fixed in place. #This maintains allelic structure, but heterozygosity is variable.
 
+
+n_rep = 100
+
+es <- replicate(n_rep, (shufflepop(mydata_genind, method=1)))
+
+fis_df <- numeric(sequence_length)
+for (i in 1:n_rep){
+  # Calculate the statistics for the i-th matrix
+  result_fis_stats <- as_tibble(Fst(as.loci(es[[i]]))) %>% select("Fis" )
+  
+  #print( result_fis_stats)
+  # Assign values to the data frames
+  fis_df <- cbind(fis_df, result_fis_stats$Fis)
+}
+
+# Set row names as in result_f_stats
+rownames(fis_df) <- rownames(result_f_stats)
+fis_df <-fis_df[, -1]
+vec <- seq(1, n_rep)
+colnames(fis_df) <- vec
+
+
+# Initialize an empty data frame to store the counts
+fis_df_Greater <- numeric(sequence_length)
+fis_df_Smaller <- numeric(sequence_length)
+
+# Compare the values in result_f_stats[1] to result_FST for each column
+for (col in colnames(fis_df)) {
+  greater_count <- as_tibble(result_f_stats[2] > fis_df[,col])
+  smaller_count <- as_tibble(result_f_stats[2] < fis_df[,col])
+
+  fis_df_Greater <- cbind(fis_df_Greater, greater_count$`Fis (W&C)`)
+  fis_df_Smaller <- cbind(fis_df_Smaller, smaller_count$`Fis (W&C)`)
+}
+
+# Set row names as in result_f_stats
+rownames(fis_df_Smaller) <- rownames(fis_df_Greater) <- rownames(result_f_stats)
+fis_df_Smaller <-fis_df_Smaller[, -1]
+fis_df_Greater <-fis_df_Greater[, -1]
+vec <- seq(1, n_rep)
+colnames(fis_df_Smaller) <- colnames(fis_df_Greater) <- vec
+
+
+fis_df_Smaller_av <- as.data.frame(fis_df_Smaller) %>%
+   mutate(average = rowSums(across(where(is.numeric)))/n_rep) %>% select(average)
+fis_df_Greater_av <- as.data.frame(fis_df_Greater) %>%
+   mutate(average = rowSums(across(where(is.numeric)))/n_rep) %>% select(average)
+
+rownames(fis_df_Smaller_av) <- rownames(fis_df_Greater_av) <- rownames(result_f_stats)
+
+fis_df_sg <- merge(fis_df_Smaller_av, fis_df_Greater_av, by="row.names",all.x=TRUE) %>% column_to_rownames('Row.names')
+
+
+colnames(fis_df_sg) <- c("smaller", "greater")
+
+fis_df_sg %>% mutate(`Two-sided p-values` = ifelse(smaller > 0.5, 2 * (1 - smaller), 2 * smaller))
+
+
+
+
+```
 
 ## File export 
 
-```{r export}
+```{r export, eval = FALSE}
 library(radiator)
 
 genomic_converter(
@@ -322,4 +412,9 @@ genomic_converter(
   verbose = TRUE,
   ...
 )
+
+library(hierfstat)
+write.fstat
+write.struct
+
 ```
