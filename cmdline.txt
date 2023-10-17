@@ -1,0 +1,10 @@
+Genepop
+HWFile=data/mydata.genepop.txt
+HWfileOptions=3
+Dememorisation=10000
+HWtests=MCMC
+BatchNumber=20
+BatchLength=5000
+RandomSeed=67144630
+Mode=Batch
+
