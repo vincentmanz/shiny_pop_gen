@@ -65,6 +65,7 @@ mydata_hierfstat <- genind2hierfstat(mydata_genind)
 library(poppr)
 library(heatmaply)
 library(tidyr)
+library(tibble)
 
 missing_data <- info_table(mydata_genind, plot = FALSE, percent = TRUE, df = TRUE)
 missing_data <- missing_data %>% spread(key = Locus, value = Missing  ) 
@@ -205,8 +206,11 @@ method = 1: Permute Alleles This will redistribute all alleles in the sample thr
 method = 4: Multilocus Style Permutation This will shuffle the genotypes at each locus, maintaining the heterozygosity and allelic structure.
 
 ```{r Linkage_poppr, cache=TRUE}
+library(tictoc)
+tic(msg = "pair.ia")
 loci_pair <- pair.ia(mydata_genind, sample = n_rep, quiet = FALSE, method = 4,plot = FALSE)
 loci_pair
+toc()
 ```
 
 ### with genepop
@@ -250,6 +254,7 @@ library(pegas)
 library(dplyr)
 library(tibble)
 #Permute Alleles This will redistribute all alleles in the sample throughout the locus. Missing data is fixed in place. #This maintains allelic structure, but heterozygosity is variable.
+tic(msg = "pair.ia")
 
 
 es <- replicate(n_rep, (shufflepop(mydata_genind, method=1)))
@@ -321,6 +326,8 @@ fis_df_sg <- merge(fis_df_Smaller_av, fis_df_Greater_av, by="row.names",all.x=TR
 colnames(fis_df_sg) <- c("smaller", "greater")
 
 fis_df_sg_t <- fis_df_sg %>% mutate(`Two-sided p-values` = ifelse(smaller > 0.5, 2 * (1 - smaller), 2 * smaller))
+
+toc()
 
 # standard deviation SE
 # Calculate the standard deviation for each element in fis_df
