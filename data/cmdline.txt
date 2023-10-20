@@ -1,9 +1,0 @@
-Genepop
-GenepopInputFile=05_radiator_genomic_converter_20231017@1623/mydata.genepop.txt
-MenuOptions=2:1
-Dememorisation=10000
-BatchNumber=100
-BatchLength=1000
-RandomSeed=67144630
-Mode=Batch
-

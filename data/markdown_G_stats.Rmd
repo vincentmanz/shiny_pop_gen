@@ -107,9 +107,9 @@ result_f_stats <- result_f_stats[, 2:3]
 colnames(result_f_stats) <- c("Fst (W&C)", "Fis (W&C)")
 result_f_stats <- merge(result_f_stats, df_resutl_basic, by = "row.names", all.x = TRUE)
 colnames(result_f_stats)[10] <- "Fst (Nei)"
-colnames(result_f_stats)[12] <- "Fis (Nei"
+colnames(result_f_stats)[12] <- "Fis (Nei)"
 result_f_stats <- result_f_stats %>% column_to_rownames(., var = 'Row.names')
-result_f_stats_selec <- result_f_stats %>% select(all_of(selected_stats))
+result_f_stats_selec <- result_f_stats %>% select((selected_stats))
 result_f_stats_selec
 
 ```
@@ -210,25 +210,47 @@ toc()
 
 ## Panmixia - HW
 
-```{r shuffle, tidy = TRUE, cache=TRUE}
+```{r shuffle, tidy = TRUE, cache=TRUE, message=FALSE}
 library(poppr)
 library(pegas)
 library(dplyr)
 library(tibble)
 #Permute Alleles This will redistribute all alleles in the sample throughout the locus. Missing data is fixed in place. #This maintains allelic structure, but heterozygosity is variable.
-tic(msg = "pair.ia")
 
 
 es <- replicate(n_rep, (shufflepop(mydata_genind, method=1)))
 fis_df <- numeric(sequence_length)
 
-#for (i in 1:n_rep){
-#  # Calculate the statistics for the i-th matrix
-#  result_fis_stats <- as_tibble(Fst(as.loci(es[[i]]))) %>% select("Fis" )
-#  # Assign values to the data frames
-#  fis_df <- cbind(fis_df, result_fis_stats$Fis)
-#}
+########################### serial
 
+library(tictoc)
+tic(msg = "serial")
+for (i in 1:n_rep){
+  # Calculate the statistics for the i-th matrix
+  result_fis_stats <- as_tibble(Fst(as.loci(es[[i]]))) %>% select("Fis" )
+  # Assign values to the data frames
+  fis_df <- cbind(fis_df, result_fis_stats$Fis)
+}
+toc()
+########################### sapply
+
+tic(msg = "sapply")
+library(dplyr)
+library(pegas)
+# Assuming you already have 'es' and 'n_rep' defined
+
+# Create a list to store the results
+fis_list <- sapply(1:n_rep, function(i) {
+  as_tibble(Fst(as.loci(es[[i]]))) %>% select(Fis) %>% pull()
+})
+
+
+
+
+toc()
+
+########################### foreach
+tic(msg = "foreach")
 library(foreach)
 library(doParallel)
 
@@ -248,6 +270,8 @@ fis_df <- matrix(unlist(fis_list), nrow = n_rep, byrow = TRUE)
 fis_df <- t(fis_df)
 # Stop the parallel processing cluster
 stopCluster(cl)
+
+toc()
 
 # Set row names as in result_f_stats
 rownames(fis_df) <- rownames(result_f_stats)
@@ -288,8 +312,6 @@ fis_df_sg <- merge(fis_df_Smaller_av, fis_df_Greater_av, by="row.names",all.x=TR
 colnames(fis_df_sg) <- c("smaller", "greater")
 
 fis_df_sg_t <- fis_df_sg %>% mutate(`Two-sided p-values` = ifelse(smaller > 0.5, 2 * (1 - smaller), 2 * smaller))
-
-toc()
 
 # standard deviation SE
 # Calculate the standard deviation for each element in fis_df
