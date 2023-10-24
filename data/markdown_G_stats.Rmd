@@ -18,15 +18,22 @@ filtered_data <-
   read.csv("../data/data-2023-09-11 (2).csv", header = TRUE)
 
 selected_stats <-
-  c("Ho", "Hs", "Ht", "Fis (W&C)", "Fst (W&C)", "Fis (Nei)", "Fst (Nei)")
+  c("Ho", "Hs", "Ht", "Fit (W&C)", "Fis (W&C)", "Fst (W&C)", "Fis (Nei)", "Fst (Nei)")
 
-n_rep = 10000
+
+# Specify the number of bootstrap replicates
+R <- 1000
+
+# Specify the number of replicates (HW-Panmixia)
+n_rep = 100
+
+# information inherited from previous page 
 n_marker = 6
 n_pop = 8
-
 sequence_length <- length(6:11) 
 
-num_cores <- 16
+# Specify the number of cores available
+num_cores <- parallel::detectCores()
 ```
 
 ## data filtering convertion
@@ -103,13 +110,12 @@ df_resutl_basic <- as.data.frame(result$perloc)
 
 # Weir and Cockrham estimates of F-statistics - FIS and FST
 result_f_stats <- Fst(as.loci(mydata_genind), na.alleles = "")  # pegas
-result_f_stats <- result_f_stats[, 2:3]
-colnames(result_f_stats) <- c("Fst (W&C)", "Fis (W&C)")
+colnames(result_f_stats) <- c("Fit (W&C)", "Fis (W&C)", "Fst (W&C)")
 result_f_stats <- merge(result_f_stats, df_resutl_basic, by = "row.names", all.x = TRUE)
 colnames(result_f_stats)[10] <- "Fst (Nei)"
 colnames(result_f_stats)[12] <- "Fis (Nei)"
 result_f_stats <- result_f_stats %>% column_to_rownames(., var = 'Row.names')
-result_f_stats_selec <- result_f_stats %>% select((selected_stats))
+result_f_stats_selec <- result_f_stats %>% select(all_of(selected_stats))
 result_f_stats_selec
 
 ```
@@ -203,12 +209,56 @@ method = 4: Multilocus Style Permutation This will shuffle the genotypes at each
 ```{r Linkage_poppr, cache=TRUE}
 library(tictoc)
 tic(msg = "pair.ia")
-loci_pair <- pair.ia(mydata_genind, sample = n_rep, quiet = FALSE, method = 4,plot = FALSE)
-loci_pair
+
+calculate_p_rD_BY <- function(method, n_rep) {
+    tic(msg = "pair.ia")
+    loci_pair <- pair.ia(mydata_genind, sample = n_rep, quiet = FALSE, method = method, plot = FALSE)
+    
+    # Convert your matrix to a data frame or tibble
+    loci_pair_df <- as.data.frame(loci_pair)
+    
+    # Now you can use mutate to calculate p.rD_BY
+    loci_pair_df <- loci_pair_df %>% mutate("p.rD_BY" = p.adjust(p.rD, method = "BY", n = 1000))
+    
+
+    return(loci_pair_df)
+  }
+
+# Method 1, single locus
+loci_pair_BY <- calculate_p_rD_BY(1, n+rep)
+
+# Method 4, multilocus
+
+loci_pair_BY <- calculate_p_rD_BY(4, n+rep)
+
 toc()
+
+
+
+## Bootstrap
+#boot.ia {poppr}
+#This function will perform the index of association on a bootstrapped data set multiple times to create a distribution, showing the variation of the index due to repeat observations.
+
+
 ```
 
 ## Panmixia - HW
+
+### Test of Hardy–Weinberg Equilibrium - hw.test {pegas}
+#### Details
+**H0** the locus is in HW equilibrium in the population
+**H1** The locus is not in HW equilibrium.
+note: A p-value less than 0.05 is typically considered to be statistically significant, in which case the null hypothesis should be rejected. A p-value greater than 0.05 means that deviation from the null hypothesis is not statistically significant, and the null hypothesis is not rejected.
+
+This test can be performed with any level of ploidy. Two versions of the test are available: the classical chi^2-test based on the expected genotype frequencies calculated from the allelic frequencies, and an exact test based on Monte Carlo permutations of alleles (Guo and Thompson 1992). For the moment, the latter version is available only for diploids. Set B = 0 if you want to skip the second test.
+
+```{r h_w_pegas, tidy = TRUE, cache=TRUE, message=FALSE}
+
+hw.test((mydata_genind), B = 1000 )
+
+
+```
+
 
 ```{r shuffle, tidy = TRUE, cache=TRUE, message=FALSE}
 library(poppr)
@@ -221,36 +271,6 @@ library(tibble)
 es <- replicate(n_rep, (shufflepop(mydata_genind, method=1)))
 fis_df <- numeric(sequence_length)
 
-########################### serial
-
-library(tictoc)
-tic(msg = "serial")
-for (i in 1:n_rep){
-  # Calculate the statistics for the i-th matrix
-  result_fis_stats <- as_tibble(Fst(as.loci(es[[i]]))) %>% select("Fis" )
-  # Assign values to the data frames
-  fis_df <- cbind(fis_df, result_fis_stats$Fis)
-}
-toc()
-########################### sapply
-
-tic(msg = "sapply")
-library(dplyr)
-library(pegas)
-# Assuming you already have 'es' and 'n_rep' defined
-
-# Create a list to store the results
-fis_list <- sapply(1:n_rep, function(i) {
-  as_tibble(Fst(as.loci(es[[i]]))) %>% select(Fis) %>% pull()
-})
-
-
-
-
-toc()
-
-########################### foreach
-tic(msg = "foreach")
 library(foreach)
 library(doParallel)
 
@@ -259,9 +279,8 @@ registerDoParallel(cl)
 # Create a list to store the results
 fis_list <- foreach(i = 1:n_rep, .combine = 'c') %dopar% {
    library(dplyr)
-  library(pegas)
   # Calculate the statistics for the i-th matrix
-  result_fis_stats <- as_tibble(Fst(as.loci(es[[i]]))) %>% select(Fis)
+  result_fis_stats <- as_tibble(pegas::Fst(pegas::as.loci(es[[i]]))) %>% select(Fis)
   return(result_fis_stats$Fis)
 }
 
@@ -271,7 +290,6 @@ fis_df <- t(fis_df)
 # Stop the parallel processing cluster
 stopCluster(cl)
 
-toc()
 
 # Set row names as in result_f_stats
 rownames(fis_df) <- rownames(result_f_stats)
@@ -311,25 +329,94 @@ fis_df_sg <- merge(fis_df_Smaller_av, fis_df_Greater_av, by="row.names",all.x=TR
 
 colnames(fis_df_sg) <- c("smaller", "greater")
 
-fis_df_sg_t <- fis_df_sg %>% mutate(`Two-sided p-values` = ifelse(smaller > 0.5, 2 * (1 - smaller), 2 * smaller))
+# Assuming 'smaller' and 'greater' are columns in your 'fis_df_sg' data frame
+fis_df_sg_t <- fis_df_sg %>% mutate(`Two-sided p-values` = smaller + (1 - greater))
 
-# standard deviation SE
+#fis_df_sg_t <- fis_df_sg %>% mutate(`Two-sided p-values` = ifelse(smaller > 0.5, 2 * (1 - smaller), 2 * smaller))
+
+
+```
+
+
+
+
+### bootstrap, confidence intervals at 95%
+
+!! bootstrap on the initial loci data frame: filtered_data
+
+
+Dixon, Philip M. "Bootstrap resampling." Encyclopedia of environmetrics (2006).
+
+! method BALANCED BOOTSTRAP
+The balanced bootstrap is an alternative sampling
+method that can increase the precision of the bootstrap bias and SE. The balanced bootstrap forces each observation to occur a total of nB times in the collection of nB bootstrap samples. This does not force each bootstrap sample to contain all observations; the first observation may occur twice in the first bootstrap sample and not at all in the second, while the second observation may occur once in each sample. Balanced bootstrap samples can be generated by constructing a population with n copies of each of the n observations, then randomly permuting that population. The first n permuted values are the first bootstrap sample, the second n permuted values are the second sample, and so on. While balancing often decreases the variance of the estimated bias and SE, it appears to be less useful for estimating confidence interval endpoints.
+
+! ORDINARY NONPARAMETRIC BOOTSTRAP
+In the ordinary nonparametric bootstrap described
+above, each bootstrap sample is a simple random sample, with replacement, of the observations. The bootstrap samples are a subset of all possible samples of size n from a finite population with n copies of each observation. Hence, the bootstrap estimates of bias, SE, and confidence interval endpoints are random variables. Their variance can be reduced by increasing the number of bootstrap samples [13] or by using more complex sampling methods [5, pp. 437–487].
+
+```{r bootstrap , tidy = TRUE, cache=TRUE}
+
+filtered_data_loci <- filtered_data[,6:11]
+
+
+library(boot)
+#tic(msg = "boot 1000")
+# Define a custom statistic function for FIS values
+calculate_fis <- function(data, indices) {
+  # Sample the data based on the indices
+  sampled_data <- data[indices, ]
+  
+  mydata_genind_boot <- df2genind(
+    X = as.matrix(sampled_data),
+    sep = "/",
+    ncode = 6,
+    ind.names = filtered_data$indv,
+    pop = filtered_data$Population,
+    NA.char = "0/0",
+    ploidy = 2,
+    type = "codom",
+    strata = NULL,
+    hierarchy = NULL
+  )
+  fis_values <- pegas::Fst(pegas::as.loci(mydata_genind_boot))[, 3]
+  return(fis_values)
+}
+
+
+# Perform bootstrapping using the boot function
+set.seed(123)  # Set a seed for reproducibility
+boot_results <- boot(data = filtered_data_loci, statistic = calculate_fis, R = R, sim = "balanced", parallel = "multicore", ncpus = num_cores)
+# toc()
+# Print the results
+print(boot_results)
+
+# boot 1000: 70.919 sec elapsed
+```
+
+
+```{r boot , tidy = TRUE, cache=TRUE}
+library(tibble)
+#Bootstrap confidence intervals for variance components - boot.vc {hierfstat}
+#Description
+#Provides a bootstrap confidence interval (over loci) for sums of the different variance components (equivalent to gene diversity estimates at the different levels), and the derived F-statistics, as suggested by Weir and Cockerham (1984). Will not run with less than 5 loci. Raymond and Rousset (199X) points out shortcomings of this method.
+#levels_df <- data.frame(pop = mydata_hierfstat$pop)
+#result_boot <- boot.vc(levels = levels_df, loci = mydata_hierfstat[, -1], diploid = TRUE, nboot = 100)
+
+
+# standard error SE
 # Calculate the standard deviation for each element in fis_df
-std_dev <- as.data.frame(apply(fis_df, 1, sd))
-colnames(std_dev) <- ("std_dev")
+std_error <- as.data.frame(boot_results$t0) 
+colnames(std_error) <- c("SE")
 
-################################# Calculate SE #################################
 # join df 
-std_dev <- std_dev %>% mutate("SE" = std_dev/sqrt(n_rep)*4)
-rownames(std_dev) <- c(rownames(fis_df_sg_t))
-
-df_merge <- merge(std_dev,fis_df_sg_t, by="row.names",all.x=TRUE) %>% column_to_rownames('Row.names')
+df_merge <- merge(std_error,fis_df_sg_t, by="row.names",all.x=TRUE) %>% column_to_rownames('Row.names')
 df_merge <- merge(df_merge, result_f_stats[2],  by="row.names",all.x=TRUE) %>%
   column_to_rownames('Row.names')
 df_merge <- df_merge %>% 
   mutate("t" = qt(1-0.05/2, n_pop-1)) %>%
   mutate("95%CI_i" = `Fis (W&C)` - t * SE ) %>% 
-  mutate("95%CI_s" = `Fis (W&C)` + t*SE) %>%
+  mutate("95%CI_s" = `Fis (W&C)` + t * SE) %>%
   mutate()
 
 ```
@@ -344,7 +431,7 @@ library(ggplot2)
 p <- ggplot(df_merge, aes(x = rownames(df_merge), y = `Fis (W&C)`)) +
   geom_point() +
   geom_errorbar(aes(ymin = `95%CI_i`, ymax = `95%CI_s`), width = 0.2, position = position_dodge(0.05)) +
-  xlab("Category") +
+  xlab("Loci") +
   ylab("Fis (W&C)")
 
 # Rotate X-axis labels for better readability
@@ -367,7 +454,6 @@ p + theme(axis.text.x = element_text(angle = 45, hjust = 1))
 
 
 ######################## DEVELOPMENT ######################## 
-################# not ready for deployment ##################
 
 #### File export 
 
@@ -388,4 +474,196 @@ library(hierfstat)
 write.fstat
 write.struct
 
+```
+
+
+## randomised microsat data
+
+```{r random_mic, eval = FALSE}
+
+############################################ random micordat data
+
+# Set the dimensions of the table
+num_rows <- 698
+num_cols <- 6
+# Create a data frame with random values
+random_data <- data.frame(matrix(runif(num_rows * num_cols, min = 1, max = 100), nrow = num_rows, ncol = num_cols))
+# Optionally, round the values to integers
+random_data <- round(random_data)
+# Define the proportion of missing data (1%)
+missing_data_proportion <- 0.01
+# Determine the number of missing data cells
+num_missing_cells <- ceiling(num_rows * num_cols * missing_data_proportion)
+# Replace 1% of the values with "0/0"
+random_indices <- sample(num_rows * num_cols, num_missing_cells)
+random_data[unlist(lapply(random_indices, function(i) c(i %% num_rows, i %/% num_rows + 1))), ] <- "0/0"
+# Set column names
+colnames(random_data) <- c("B12", "C07", "D12", "D10", "A12", "C03")
+# Format the data as fractions, handling "0/0" values
+random_data <- lapply(random_data, function(x) {
+  ifelse(x == "0/0", "0/0", paste0(round(as.numeric(x)), "/", round(100 - as.numeric(x))))
+})
+```
+
+
+## Benchmarking code
+
+### Fst {pegas}
+
+```{r Fst, eval = FALSE}
+library(tictoc)
+
+n_rep = 10000
+es <- replicate(n_rep, (shufflepop(mydata_genind, method=1)))
+fis_df <- numeric(sequence_length)
+
+
+
+########################### for loop
+tic(msg = "for loop")
+for (i in 1:n_rep){
+  # Calculate the statistics for the i-th matrix
+  result_fis_stats <- as_tibble(Fst(as.loci(es[[i]]))) %>% select("Fis" )
+  # Assign values to the data frames
+  fis_df <- cbind(fis_df, result_fis_stats$Fis)
+}
+toc()
+
+
+########################### sapply
+
+tic(msg = "sapply")
+library(dplyr)
+library(pegas)
+# Assuming you already have 'es' and 'n_rep' defined
+
+# Create a list to store the results
+fis_list <- sapply(1:n_rep, function(i) {
+  as_tibble(Fst(as.loci(es[[i]]))) %>% select(Fis) %>% pull()
+})
+
+toc()
+
+
+########################### foreach
+tic(msg = "foreach")
+library(foreach)
+library(doParallel)
+
+cl <- makeCluster(num_cores)
+registerDoParallel(cl)
+# Create a list to store the results
+fis_list <- foreach(i = 1:n_rep, .combine = 'c') %dopar% {
+   library(dplyr)
+  library(pegas)
+  # Calculate the statistics for the i-th matrix
+  result_fis_stats <- as_tibble(Fst(as.loci(es[[i]]))) %>% select(Fis)
+  return(result_fis_stats$Fis)
+}
+
+# Combine the results into a matrix
+fis_df <- matrix(unlist(fis_list), nrow = n_rep, byrow = TRUE)
+fis_df <- t(fis_df)
+# Stop the parallel processing cluster
+stopCluster(cl)
+
+toc()
+
+# Result benchmarking "for loop" / sapply() / foreach() for 10,000 replicates:
+# for loop: 5707.553 sec elapsed
+# sapply: 5639.84 sec elapsed
+# foreach: 1017.843 sec elapsed
+```
+
+
+### wc {hierfstat}
+
+```{r wc_1, eval = FALSE}
+library(tictoc)
+library(poppr)
+n_rep = 10000
+es <- replicate(n_rep, (poppr::shufflepop(mydata_genind, method=1)))
+fis_df <- numeric(sequence_length)
+
+
+
+########################### for loop
+tic(msg = "for loop")
+
+# Initialize an empty data frame to store FIS values
+fis_df <- data.frame(FIS = numeric(0))
+
+for (i in 1:n_rep) {
+  # Calculate the statistics for the i-th matrix
+  result_fis_stats <- hierfstat::wc(es[[i]])
+  result_fis_stats <- result_fis_stats$per.loc
+  fis_value <- dplyr::select(result_fis_stats, FIS)
+  # Create a data frame with the extracted values
+  result_df <- data.frame(FIS = fis_value)
+  # Bind FIS values to the fis_df data frame
+  fis_df <- rbind(fis_df, result_df)
+}
+
+toc()
+
+
+########################### sapply
+library(dplyr)
+fis_df <- numeric(sequence_length)
+
+tic(msg = "sapply")
+
+# Create a list to store the results
+fis_list <- lapply(1:n_rep, function(i) {
+  # Calculate the statistics for the i-th matrix
+  result_fis_stats <- hierfstat::wc(es[[i]])
+  result_fis_stats <- result_fis_stats$per.loc
+  fis_value <- dplyr::select(result_fis_stats, FIS)
+  return(fis_value)
+})
+
+# Combine the list into a data frame
+fis_df <- data.frame(FIS = unlist(fis_list))
+
+toc()
+
+########################### foreach
+library(foreach)
+library(doParallel)
+
+# Initialize an empty data frame to store FIS values
+fis_df <- data.frame(FIS = numeric(0))
+
+tic(msg = "foreach")
+
+cl <- makeCluster(num_cores)
+registerDoParallel(cl)
+
+# Create a list to store the results
+fis_list <- foreach(i = 1:n_rep, .combine = 'c') %dopar% {
+  library(dplyr)
+  
+  # Calculate the statistics for the i-th matrix
+  result_fis_stats <- hierfstat::wc(es[[i]])
+  result_fis_stats <- result_fis_stats$per.loc
+  fis_value <- dplyr::select(result_fis_stats, FIS)
+  # Create a data frame with the extracted values
+  result_df <- data.frame(FIS = fis_value)
+  return(result_df)  # Return individual result_df
+}
+
+# Combine the results into a data frame and rename the column
+fis_df <- do.call(rbind, fis_list)
+
+# Stop the parallel processing cluster
+stopCluster(cl)
+
+toc()
+
+
+
+# Result benchmarking "for loop" / sapply() / foreach() for 10,000 replicates
+# for loop: 11975.108 sec elapsed
+# sapply: 11181.662 sec elapsed
+# foreach: 1503.015 sec elapsed
 ```

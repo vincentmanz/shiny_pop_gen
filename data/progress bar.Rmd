@@ -1,0 +1,126 @@
+---
+title: "Progress bar experiment"
+output: html_notebook
+---
+
+
+
+```{r Parameters, tidy = TRUE}
+filtered_data <-
+  read.csv("../data/data-2023-09-11 (2).csv", header = TRUE)
+
+selected_stats <-
+  c("Ho", "Hs", "Ht", "Fis (W&C)", "Fst (W&C)", "Fis (Nei)", "Fst (Nei)")
+
+n_rep = 100
+n_marker = 6
+n_pop = 8
+
+sequence_length <- length(6:11) 
+
+num_cores <- 16
+
+
+
+library(hierfstat)
+library(adegenet)
+filtered_data <-
+  data.frame(indv = paste(
+    substr(filtered_data$Population, 1, 3),
+    row.names(filtered_data),
+    sep = "."
+  ), filtered_data)
+# Create mydata_genind
+population <- filtered_data$Population
+mydata_genind <- df2genind(
+  X = filtered_data[, 6:11],
+  sep = "/",
+  ncode = 6,
+  ind.names = filtered_data$indv,
+  pop = filtered_data$Population,
+  NA.char = "0/0",
+  ploidy = 2,
+  type = "codom",
+  strata = NULL,
+  hierarchy = NULL
+)
+mydata_hierfstat <- genind2hierfstat(mydata_genind)
+
+
+
+
+
+
+```
+
+# Style of bar
+
+## The txtProgressBar function
+
+```{r Parameters, tidy = TRUE}
+
+# Initializes the progress bar
+pb <- txtProgressBar(min = 0,      # Minimum value of the progress bar
+                     max = n_rep, # Maximum value of the progress bar
+                     style = 3,    # Progress bar style (also available style = 1 and style = 2)
+                     width = 50,   # Progress bar width. Defaults to getOption("width")
+                     char = "=")   # Character used to create the bar
+
+for(i in 1:n_rep) {
+
+    Sys.sleep(0.001) # Remove this line and add your code
+    setTxtProgressBar(pb, i)
+}
+
+close(pb) # Close the connection
+```
+
+## Package ‘progress’
+
+
+```{r Parameters, tidy = TRUE}
+# install.packages("progress")
+library(progress)
+
+n_iter <- 100
+
+pb <- progress_bar$new(format = "(:spin) [:bar] :percent [Elapsed time: :elapsedfull || Estimated time remaining: :eta]",
+                       total = n_rep,
+                       complete = "=",   # Completion bar character
+                       incomplete = "-", # Incomplete bar character
+                       current = ">",    # Current bar character
+                       clear = FALSE,    # If TRUE, clears the bar when finish
+                       width = 100)      # Width of the progress bar
+
+for(i in 1:n_rep) {
+  
+    # Updates the current state
+    pb$tick()
+  
+    #---------------------
+    # Code to be executed
+    #---------------------
+  
+    Sys.sleep(0.000001) # Remove this line and add your code
+  
+    #---------------------
+  
+}
+```
+
+```{r Parameters, tidy = TRUE}
+
+library(pbapply)
+library(dplyr)
+library(pegas)
+library(poppr)
+n_rep = 10
+es <- replicate(n_rep, (shufflepop(mydata_genind, method=1)))
+
+
+pblapply(1:3, function(i){
+            fis_list <- sapply(1:n_rep, function(i) {
+  as_tibble(Fst(as.loci(es[[i]]))) %>% select(Fis) %>% pull()
+})  
+})
+```
