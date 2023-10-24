@@ -1,6 +1,7 @@
 ---
 title: "GenePop - general stats"
 output:
+  pdf_document: default
   html_document:
     df_print: paged
 editor_options:
@@ -225,11 +226,11 @@ calculate_p_rD_BY <- function(method, n_rep) {
   }
 
 # Method 1, single locus
-loci_pair_BY <- calculate_p_rD_BY(1, n+rep)
+loci_pair_BY <- calculate_p_rD_BY(1, n_rep)
 
 # Method 4, multilocus
 
-loci_pair_BY <- calculate_p_rD_BY(4, n+rep)
+loci_pair_BY <- calculate_p_rD_BY(4, n_rep)
 
 toc()
 
@@ -355,6 +356,7 @@ method that can increase the precision of the bootstrap bias and SE. The balance
 In the ordinary nonparametric bootstrap described
 above, each bootstrap sample is a simple random sample, with replacement, of the observations. The bootstrap samples are a subset of all possible samples of size n from a finite population with n copies of each observation. Hence, the bootstrap estimates of bias, SE, and confidence interval endpoints are random variables. Their variance can be reduced by increasing the number of bootstrap samples [13] or by using more complex sampling methods [5, pp. 437–487].
 
+
 ```{r bootstrap , tidy = TRUE, cache=TRUE}
 
 filtered_data_loci <- filtered_data[,6:11]
@@ -390,7 +392,6 @@ boot_results <- boot(data = filtered_data_loci, statistic = calculate_fis, R = R
 # toc()
 # Print the results
 print(boot_results)
-
 # boot 1000: 70.919 sec elapsed
 ```
 

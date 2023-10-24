@@ -1,10 +1,3 @@
-base
-methods
-datasets
-utils
-grDevices
-graphics
-stats
 hierfstat
 ade4
 adegenet
@@ -21,3 +14,15 @@ tibble
 hrbrthemes
 radiator
 genepop
+tidyr
+tidyverse
+readr
+purrr
+stringr
+forcats
+lubridate
+tictoc
+foreach
+iterators
+doParallel
+boot
