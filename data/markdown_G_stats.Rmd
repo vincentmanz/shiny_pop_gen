@@ -127,7 +127,8 @@ c <- merge(a, b, by="row.names",all.x=TRUE) %>% column_to_rownames('Row.names')
 # Plot with linear trend
 p1 <- ggplot(c, aes(x=`Missing %`, y=`Fis (W&C)`)) +
   geom_point() +
-  theme_ipsum()
+  theme_ipsum() +
+  geom_smooth(method = "lm", se = FALSE) 
 p1
 
 ```

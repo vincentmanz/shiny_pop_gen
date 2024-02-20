@@ -13,6 +13,9 @@ library(hierfstat)
 library(kableExtra)
 library(adegenet)
 library(tidyverse)
+library(pegas)
+library(hrbrthemes)
+library(poppr)
 
 
 # Source server and UI files
@@ -25,6 +28,7 @@ source("module/ui_genetic_drift.R")
 source("module/ui_general_stats.R")
 
 source("www/helper.R")
+
 
 source("module/welcome.R")
 
