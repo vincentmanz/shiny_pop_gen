@@ -54,58 +54,37 @@ a
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-selected_plot_result <- NA
-
-selected_plots <- c(
-  "Heatmap with missing data per marker and population",
-  "GST",
-  "FIS and missing data"
+fis <- data.frame(
+  Fis_W_and_C = c(0.05262381, 0.09439829, 0.17029220, 0.12144043, 0.15500499, 0.18009170),
+  row.names = c("A12", "B12", "C03", "C07", "D10", "D12")
 )
 
-# Check each element in the list
-for (plot_name in selected_plots) {
-  if (plot_name == "Heatmap with missing data per marker and population") {
-    print("heatmap")
-  } else if (plot_name == "GST") {
-    print("GST")
-  } else if (plot_name == "FIS and missing data") {
-    print("FIS")
-  }
-}
+# Print the fis data frame
+print(fis)
 
 
+# Create a data frame
+missing_data <- data.frame(
+  A12 = c(3.7037037, 1.7094017, 0.9433962, 5.6338028, 0.0000000, 0.0000000, 3.0120482, 0.0000000, 1.8624642),
+  B12 = c(0.0000000, 2.5641026, 0.9433962, 12.6760563, 0.0000000, 1.8691589, 4.8192771, 0.0000000, 3.2951289),
+  C03 = c(0.000000, 8.547009, 12.264151, 2.816901, 26.250000, 26.168224, 7.228916, 0.000000, 12.320917),
+  C07 = c(3.703704, 11.111111, 8.490566, 5.633803, 7.500000, 3.738318, 5.421687, 0.000000, 6.590258),
+  D10 = c(0.000000, 1.709402, 3.773585, 7.042254, 1.250000, 2.803738, 7.228916, 0.000000, 3.868195),
+  D12 = c(0.0000000, 0.0000000, 0.0000000, 32.3943662, 1.2500000, 0.9345794, 10.8433735, 16.6666667, 6.7335244),
+  Mean = c(1.234568, 4.273504, 4.402516, 11.032864, 6.041667, 5.919003, 6.425703, 2.777778, 5.778415)
+)
 
+# Add row names
+rownames(missing_data) <- c(
+  "Boulouparis", "Bourail", "Canala", "Gadji", "LaFoa", "Poquereux", "PortLaguerre", "Sarramea", "Total"
+)
 
+# Print the data frame
+print(missing_data)
 
+missing_data_transposed <- t(missing_data)
 
-
-
-
-
-
-
-
-
-
-if (length(num_plots_reactive()) > 0) {
-  splitLayout(
-    style = "border: 1px solid silver;",
-    cellWidths = rep(100 / length(num_plots_reactive()), length(num_plots_reactive()),  # Divide equally based on the number of plots
-                     lapply(1:length(num_plots_reactive()), function(i) {
-                       plotOutput(paste0("plotgraph", i))
-                     })
-    )
-  )
-}
+missing_data_transposed_total <- as.data.frame(missing_data_transposed) %>% select("Total") 
+missing_data_transposed_total <- subset(missing_data_transposed_total, !rownames(missing_data_transposed_total) %in% "Mean")
+colnames(missing_data_transposed_total) <- ('Missing %')
+fis_missing_merged <- merge(fis, missing_data_transposed_total, by="row.names",all.x=TRUE) %>% column_to_rownames('Row.names')

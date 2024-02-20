@@ -34,10 +34,11 @@ general_stats_server <- function(input, output, session) {
   
   # Create a reactive value to store the output of the general stats 
   result_stats_reactive <- reactiveVal(NULL)
-
   # Define a reactive value to store the number of plots
   num_plots_reactive <- reactiveVal(NULL)
-
+  # Missing data reactive value
+  missing_data_reac <- reactiveVal(NULL)
+  
   # Function to run the basic.stats and render the result
   observeEvent(input$run_basic_stats, {
     selected_stats <- c(
@@ -91,128 +92,93 @@ general_stats_server <- function(input, output, session) {
   })
   
   # Function to handle the plot generation
-  observeEvent(input$run_plots, {
+  observeEvent(input$run_plot_heatmap, {
+    
+    # Data shaping
+    filtered_data <- read.csv("/media/vincentmanzanilla/vincent/dev/parasiteR/data/data-2023-09-11 (2).csv", header = TRUE)
+    filtered_data <- data.frame(indv = paste(substr(filtered_data$Population, 1, 3),row.names(filtered_data),sep = "."), filtered_data)
+    population <- filtered_data$Population
+    mydata_genind <- df2genind(X = filtered_data[, column_genotype_start:column_genotype_end],sep = "/",ncode = 6,ind.names = filtered_data$indv,pop = filtered_data$Population, NA.char = "0/0", ploidy = 2, type = "codom", strata = NULL, hierarchy = NULL)
+    missing_data <- info_table(mydata_genind, plot = FALSE, percent = TRUE, df = TRUE)
+    missing_data <- as.data.frame(missing_data) %>% spread(key = Locus, value = Missing  ) 
+    missing_data <- missing_data %>% column_to_rownames(var = "Population") ### !! alphabetically ordered index
+    missing_data <- missing_data * 100
+    missing_data_reac(missing_data)
+    ### heatmap
+    # plot_missing_data <- heatmaply((missing_data), 
+    #                                dendrogram = "none",
+    #                                xlab = "", ylab = "", 
+    #                                main = "Heatmap of the missing data in the dataset.",
+    #                                scale = "none",
+    #                                margins = c(60,100,40,20),
+    #                                grid_color = "white",
+    #                                grid_width = 0.00001,
+    #                                titleX = FALSE,
+    #                                hide_colorbar = FALSE,
+    #                                branches_lwd = 0.1,
+    #                                label_names = c("Population", "Marker", "Percentage of missing data"),
+    #                                fontsize_row = 8, fontsize_col = 8,
+    #                                labCol = colnames(missing_data),
+    #                                labRow = rownames(missing_data),
+    #                                heatmap_layers = theme(axis.line=element_blank()),
+    #                                colorbar_lab = "Percentages")
+    # heatmaply does not print on the shiny app find a new solution 
+    
+    library(ggplot2)
+    missing_data <- rownames_to_column(missing_data, var = "location")
+    ## Melt the data for ggplot2
+    heatmap_data_melted <- reshape2::melt(missing_data,value.name = "location" )
+    colnames(heatmap_data_melted) <- c("location", "marker", "percent")
+    # Generate the heatmap plot
+    output$plot_output <- renderPlot({
+      ggplot(data = heatmap_data_melted, aes(x = location, y = marker, fill = percent)) + 
+        geom_tile() +
+        labs(x = "Column Names", y = "Row Names", fill = "Value") +
+        theme(axis.text.x = element_text(angle = 90, hjust = 1))  # Rotate x-axis labels for better visibility
+    })
+  })
+  # Function to handle the plot generation for GST
+  observeEvent(input$run_plot_GST, {
     # Retrieve result_stats from the reactive value
-    result_stats <- result_stats_reactive()
-    #missing data
-    missing_data_reac <- reactiveVal(NULL)
-    # import the selected plots
-    selected_plot <- names(Filter(function(x) x, 
-                                  list(
-                                    "Heatmap with missing data per marker and population" = input$Heatmap_missing_data_checkbox,
-                                    "GST" = input$plot_gst_hs_checkbox,
-                                    "FIS and missing data" = input$fis_missing_data_checkbox
-                                  )))
-    # loop to plot the selected plots 
-    if (length(selected_plot) > 0) {
-      # Check each element in the list
-      for (plot_name in selected_plot) {
-        print(plot_name)
-        if (plot_name == "Heatmap with missing data per marker and population") {
-          ## Missing data
-          filtered_data <- read.csv("/media/vincentmanzanilla/vincent/dev/parasiteR/data/data-2023-09-11 (2).csv", header = TRUE)
-          filtered_data <- data.frame(indv = paste(substr(filtered_data$Population, 1, 3),row.names(filtered_data),sep = "."), filtered_data)
-          population <- filtered_data$Population
-          mydata_genind <- df2genind(X = filtered_data[, column_genotype_start:column_genotype_end],sep = "/",ncode = 6,ind.names = filtered_data$indv,pop = filtered_data$Population, NA.char = "0/0", ploidy = 2, type = "codom", strata = NULL, hierarchy = NULL)
-          missing_data <- info_table(mydata_genind, plot = FALSE, percent = TRUE, df = TRUE)
-          missing_data <- as.data.frame(missing_data) %>% spread(key = Locus, value = Missing  ) 
-          missing_data <- missing_data %>% column_to_rownames(var = "Population") ### !! alphabetically ordered index
-          missing_data <- missing_data * 100
-          missing_data_reac(missing_data)
-          ### heatmap
-          # plot_missing_data <- heatmaply((missing_data), 
-          #                                dendrogram = "none",
-          #                                xlab = "", ylab = "", 
-          #                                main = "Heatmap of the missing data in the dataset.",
-          #                                scale = "none",
-          #                                margins = c(60,100,40,20),
-          #                                grid_color = "white",
-          #                                grid_width = 0.00001,
-          #                                titleX = FALSE,
-          #                                hide_colorbar = FALSE,
-          #                                branches_lwd = 0.1,
-          #                                label_names = c("Population", "Marker", "Percentage of missing data"),
-          #                                fontsize_row = 8, fontsize_col = 8,
-          #                                labCol = colnames(missing_data),
-          #                                labRow = rownames(missing_data),
-          #                                heatmap_layers = theme(axis.line=element_blank()),
-          #                                colorbar_lab = "Percentages")
-          # heatmaply does not print on the shiny app find a new solution 
-          
-          library(ggplot2)
-          missing_data <- rownames_to_column(missing_data, var = "location")
-          ## Melt the data for ggplot2
-          heatmap_data_melted <- reshape2::melt(missing_data,value.name = "location" )
-          colnames(heatmap_data_melted) <- c("location", "marker", "percent")
-          ## Plot the heatmap
-          plot_missing_data <- ggplot(data = heatmap_data_melted, aes(x = location, y = marker, fill = percent)) + 
-            geom_tile() +
-            labs(x = "Column Names", y = "Row Names", fill = "Value") +
-            theme(axis.text.x = element_text(angle = 90, hjust = 1))  # Rotate x-axis labels for better visibility
-          a <- plot_missing_data
-          selected_plot_result <- a
-          print("heatmap")
-          
-        } else if (plot_name == "GST") {
-          ## Plot GST with linear trend
-          plot_gst <- ggplot(result_stats, aes(x=GST, y=Hs)) +
-            geom_point() +
-            geom_smooth(method = lm , color="red", se=FALSE) +
-            theme_ipsum()
-          selected_plot_result <- plot_gst
-          print("GST")
-          
-        } else if (plot_name == "FIS and missing data") {
-          ## Plot missing data / FIS
-          a <- result_stats %>% select('Fis (W&C)', "Markers")
-          a <- column_to_rownames(a, var = "Markers")
-          missing_data <- missing_data_reac()
-          
-          b <- as_tibble(missing_data) %>% filter(row_number()==n()) %>%  rownames_to_column %>% gather(variable, value, -rowname) %>%  spread(rowname, value) %>%  slice(1:(n() - 1)) %>% column_to_rownames('variable')
-          colnames(b) <- ('Missing %')
-          b <- slice(b, 1:(n() - 1))  
-          c <- merge(a, b, by="row.names",all.x=TRUE) %>% column_to_rownames('Row.names')
-          c$`Missing %` <- as.numeric(as.character(c$`Missing %`))
-          ### Plot with linear trend
-          plot_fis_missing <- ggplot(c, aes(x=`Missing %`, y=`Fis (W&C)`)) +
-            geom_point() +
-            theme_ipsum() +
-            scale_x_continuous(labels = scales::number_format(accuracy = 0.01)) +
-            geom_smooth(method = "lm", se = FALSE, color="red") 
-          selected_plot_result <- plot_fis_missing
-          print("FIS")
-          
-          print(0)
-          print(selected_plot_result) 
-          print(1)
-          print(length(selected_plot_result))  # Print the length of selected_plot_result
-          print(2)
-        }
-      }
-    }
-    # print(selected_plot_result())
-    # print(selected_plot_result[1])
-    # print(selected_plot_result[[1]])
-    # # Mise en fome ggplot cadran
-    # # Output the selected plot result to the UI
-    # #### PRINT in Shiny
-    # #output$selected_plot_result <- renderPlot({ selected_plot_result[[1]] + selected_plot_result[[2]] + selected_plot_result[[3]]})
-    # output$plotgraph1 = renderPlot({selected_plot_result[1]})
-    # output$plotgraph2 = renderPlot({selected_plot_result[2]})
-    # output$plotgraph3 = renderPlot({selected_plot_result[3]})
-    # print(0)
-    # print(selected_plot_result) 
-    # print(1)
-    # print(length(selected_plot_result))  # Print the length of selected_plot_result
-    # print(2)
+    result_stats <- result_stats_reactive() 
+    # Generate the GST plot
+    output$plot_output <- renderPlot({
+      ## Plot GST with linear trend
+      ggplot(data = result_stats, aes(x = GST, y = Hs)) + 
+        geom_point() +
+        geom_smooth(method = lm , color="red", se=FALSE) +
+        theme_ipsum()
+    })
+  })
+  
+  # Function to handle the plot generation for FIS
+  observeEvent(input$run_plot_FIS, {
+    # Retrieve result_stats from the reactive value
+    result_stats <- result_stats_reactive() 
+    missing_data <- missing_data_reac()
+    print("a")
+    print(result_stats)
+    # Data formatting
+    fis <- as.data.frame(result_stats) %>% select('Fis (W&C)', "Markers")
+    fis <- column_to_rownames(fis, var = "Markers")
+    print("b")
     
+    missing_data_transposed <- t(missing_data)
+    missing_data_transposed_total <- as.data.frame(missing_data_transposed) %>% select("Total") 
+    missing_data_transposed_total <- subset(missing_data_transposed_total, !rownames(missing_data_transposed_total) %in% "Mean")
+    colnames(missing_data_transposed_total) <- ('Missing %')
+    fis_missing_merged <- merge(fis, missing_data_transposed_total, by="row.names",all.x=TRUE) %>% column_to_rownames('Row.names')
+    print("c")
+    print(fis_missing_merged)
     
-    # Update the number of plots reactive value
-    num_plots_reactive(length(selected_plot_result))
-    
-    #values$num_plots <- input$num_plots
-                                                    
-      })
+    # Generate the FIS plot
+    output$plot_output <- renderPlot({
+      ## Plot missing data / FIS
+      ggplot(fis_missing_merged, aes(x=`Missing %`, y=`Fis (W&C)`)) +
+        geom_point() +
+        theme_ipsum() +
+        scale_x_continuous(labels = scales::number_format(accuracy = 0.01)) +
+        geom_smooth(method = "lm", se = FALSE, color="red") 
     })
   })
 }

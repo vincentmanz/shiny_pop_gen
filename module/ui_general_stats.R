@@ -35,20 +35,37 @@ general_stats_UI <- function() {
     ),
     fluidRow(
       box(
-        width = 2,
+        width = 4,
         title = "Plot",
         status = "primary",
         solidHeader = TRUE,
-        actionButton("run_plots_heatmap", "Plot")
+        actionButton("run_plot_heatmap", "Heatmap")
       ),
       box(
-        width = 15,
-        title = "Heatmp missing data",
+        width = 4,
+        title = "GST",
+        status = "primary",
+        solidHeader = TRUE,
+        actionButton("run_plot_GST", "GST")
+      ),
+      box(
+        width = 4,
+        title = "FIS",
+        status = "primary",
+        solidHeader = TRUE,
+        actionButton("run_plot_FIS", "FIS")
+      )
+    ),
+    fluidRow(
+      box(
+        width = 12,
+        title = "Plots",
         status = "primary",
         solidHeader = TRUE,
         ## DOWNLOAD
         downloadButton("download_missing_data", ""),
-        uiOutput("Heatmap_out")
+        # Display the plot
+        plotOutput("plot_output")
       )
     )
   )
