@@ -67,6 +67,18 @@ general_stats_UI <- function() {
         # Display the plot
         plotOutput("plot_output")
       )
+    ),
+    fluidRow(
+      box(
+        width = 12,
+        title = "Panmixia",
+        status = "primary",
+        solidHeader = TRUE,
+        ## DOWNLOAD
+        downloadButton("download_missing_data", ""),
+        # Display the plot
+
+      )
     )
   )
 }

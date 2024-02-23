@@ -34,10 +34,11 @@ general_stats_server <- function(input, output, session) {
   
   # Create a reactive value to store the output of the general stats 
   result_stats_reactive <- reactiveVal(NULL)
-  # Define a reactive value to store the number of plots
-  num_plots_reactive <- reactiveVal(NULL)
   # Missing data reactive value
   missing_data_reac <- reactiveVal(NULL)
+  # Genind data reactive value
+  mydata_genind_reac <- reactiveVal(NULL)
+  
   
   # Function to run the basic.stats and render the result
   observeEvent(input$run_basic_stats, {
@@ -59,6 +60,7 @@ general_stats_server <- function(input, output, session) {
       population <- filtered_data$Population
       mydata_genind <- df2genind(X = filtered_data[, column_genotype_start:column_genotype_end],sep = "/",ncode = 6,ind.names = filtered_data$indv,pop = filtered_data$Population, NA.char = "NA", ploidy = 2, type = "codom", strata = NULL, hierarchy = NULL)
       mydata_hierfstat <- genind2hierfstat(mydata_genind)
+      mydata_genind_reac(mydata_genind)
       
       ## Nei diversity 
       result <- basic.stats(mydata_hierfstat)  # hierfstat
@@ -78,11 +80,12 @@ general_stats_server <- function(input, output, session) {
       colnames(result_stats)[11] <- "Fst (Nei)"
       colnames(result_stats)[13] <- "Fis (Nei)"
       result_stats <- result_stats %>% column_to_rownames(., var = 'Row.names') %>% rownames_to_column(var = "Markers")
+      result_stats <- result_stats %>% column_to_rownames(var = "Markers") 
+      result_stats_reactive(result_stats)
       
       #### Convert logical vector to character vector of column names
       selected_columns <- c("Markers", names(selected_stats)[selected_stats])
       result_stats_selec <- result_stats %>% select(all_of(selected_columns))
-      result_stats_reactive(result_stats)
       
       #  render the result
       output$basic_stats_result <- renderTable({req(result_stats_selec)
@@ -181,4 +184,105 @@ general_stats_server <- function(input, output, session) {
         geom_smooth(method = "lm", se = FALSE, color="red") 
     })
   })
+    
+  observeEvent(input$panmixia, {
+    # retrieve mydata_genind from the reactive value
+    mydata_genind <- mydata_genind_reac()
+    result_stats <- result_stats_reactive()
+    print(result_stats)
+    #libraries
+    library(poppr)
+    library(pegas)
+    library(dplyr)
+    library(tibble)
+    # Permute Alleles This will redistribute all alleles in the sample throughout the locus. Missing data is fixed in place. 
+    # This maintains allelic structure, but heterozygosity is variable.
+    es <- replicate(n_rep, (shufflepop(mydata_genind, method=4)))
+    # fis_df <- numeric(sequence_length)
+    #for (i in 1:n_rep){
+    #  # Calculate the statistics for the i-th matrix
+    #  result_fis_stats <- as_tibble(Fst(as.loci(es[[i]]))) %>% select("Fis" )
+    #  # Assign values to the data frames
+    #  fis_df <- cbind(fis_df, result_fis_stats$Fis)
+    #}
+    library(foreach)
+    library(doParallel)
+    cl <- makeCluster(num_cores)
+    registerDoParallel(cl)
+    # Create a list to store the results
+    fis_list <- foreach(i = 1:n_rep, .combine = 'c') %dopar% {
+      library(dplyr)
+      library(pegas)
+      # Calculate the statistics for the i-th matrix
+      result_fis_stats <- as_tibble(Fst(as.loci(es[[i]]))) %>% select(Fis)
+      return(result_fis_stats$Fis)
+    }
+    # Combine the results into a matrix
+    fis_df <- matrix(unlist(fis_list), nrow = n_rep, byrow = TRUE)
+    fis_df <- t(fis_df)
+    # Stop the parallel processing cluster
+    stopCluster(cl)
+    # Set row names as in result_f_stats
+    rownames(fis_df) <- row.names(Fst(as.loci(es[[1]])))
+    fis_df <- fis_df[order(rownames(fis_df)), ]
+    # fis_df <-fis_df[, -1]
+    vec <- seq(1, n_rep)
+    colnames(fis_df) <- vec
+    # Initialize an empty data frame to store the counts
+    fis_df_Greater <- fis_df_Smaller <- numeric(length(rownames(result_f_stats)))
+    # Compare the values in result_stats[1] to result_FST for each column
+    for (col in colnames(fis_df)) {
+      greater_count <- as_tibble(result_stats[3] > fis_df[,col])
+      smaller_count <- as_tibble(result_stats[3] < fis_df[,col])
+      fis_df_Greater <- cbind(fis_df_Greater, greater_count$`Fis (W&C)`)
+      fis_df_Smaller <- cbind(fis_df_Smaller, smaller_count$`Fis (W&C)`)
+    }
+
+    # Set row names as in result_stats
+    rownames(fis_df_Smaller) <- rownames(fis_df_Greater) <- rownames(result_stats)
+    fis_df_Smaller <-fis_df_Smaller[, -1]
+    fis_df_Greater <-fis_df_Greater[, -1]
+    vec <- seq(1, n_rep)
+    colnames(fis_df_Smaller) <- colnames(fis_df_Greater) <- vec
+    
+    fis_df_Smaller_av <- as.data.frame(fis_df_Smaller) %>%
+      mutate(average = rowSums(across(where(is.numeric)))/n_rep) %>% select(average)
+    fis_df_Greater_av <- as.data.frame(fis_df_Greater) %>%
+      mutate(average = rowSums(across(where(is.numeric)))/n_rep) %>% select(average)
+    rownames(fis_df_Smaller_av) <- rownames(fis_df_Greater_av) <- rownames(result_stats)
+    fis_df_sg <- merge(fis_df_Smaller_av, fis_df_Greater_av, by="row.names",all.x=TRUE) %>% column_to_rownames('Row.names')
+    colnames(fis_df_sg) <- c("smaller", "greater")
+    fis_df_sg_t <- fis_df_sg %>% mutate(`Two-sided p-values` = ifelse(smaller > 0.5, 2 * (1 - smaller), 2 * smaller))
+    # standard deviation SE
+    # Calculate the standard deviation for each element in fis_df
+    std_dev <- as.data.frame(apply(fis_df, 1, sd))
+    colnames(std_dev) <- ("std_dev")
+    
+    ################################# Calculate SE #################################
+    # join df 
+    std_dev <- std_dev %>% mutate("SE" = std_dev/sqrt(n_rep)*4)
+    rownames(std_dev) <- c(rownames(fis_df_sg_t))
+    
+    df_merge <- merge(std_dev,fis_df_sg_t, by="row.names",all.x=TRUE) %>% column_to_rownames('Row.names')
+    df_merge <- merge(df_merge, result_stats[3],  by="row.names",all.x=TRUE) %>%
+      column_to_rownames('Row.names')
+    df_merge <- df_merge %>% 
+      mutate("t" = qt(1-0.05/2, n_pop-1)) %>%
+      mutate("95%CI_i" = `Fis (W&C)` - t * SE ) %>% 
+      mutate("95%CI_s" = `Fis (W&C)` + t*SE) %>%
+      mutate()
+    
+    # plot the point plot 
+    library(ggplot2)
+    # Create a ggplot using df_merge
+    p <- ggplot(df_merge, aes(x = rownames(df_merge), y = `Fis (W&C)`)) +
+      geom_point() +
+      geom_errorbar(aes(ymin = `95%CI_i`, ymax = `95%CI_s`), width = 0.2, position = position_dodge(0.05)) +
+      xlab("Category") +
+      ylab("Fis (W&C)")
+    # Rotate X-axis labels for better readability
+    p + theme(axis.text.x = element_text(angle = 45, hjust = 1))
+    
+  })
 }
+
