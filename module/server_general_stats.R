@@ -190,99 +190,158 @@ general_stats_server <- function(input, output, session) {
     mydata_genind <- mydata_genind_reac()
     result_stats <- result_stats_reactive()
     print(result_stats)
-    #libraries
-    library(poppr)
-    library(pegas)
-    library(dplyr)
-    library(tibble)
-    # Permute Alleles This will redistribute all alleles in the sample throughout the locus. Missing data is fixed in place. 
-    # This maintains allelic structure, but heterozygosity is variable.
-    es <- replicate(n_rep, (shufflepop(mydata_genind, method=4)))
-    # fis_df <- numeric(sequence_length)
-    #for (i in 1:n_rep){
-    #  # Calculate the statistics for the i-th matrix
-    #  result_fis_stats <- as_tibble(Fst(as.loci(es[[i]]))) %>% select("Fis" )
-    #  # Assign values to the data frames
-    #  fis_df <- cbind(fis_df, result_fis_stats$Fis)
-    #}
-    library(foreach)
-    library(doParallel)
-    cl <- makeCluster(num_cores)
+    
+    # shuffle genotypes
+    es <- replicate(n_rep, (shufflepop(mydata_genind, method=1)))
+    fis_df <- numeric(sequence_length)
+    
+    cl <- parallel::makeCluster(num_cores)
     registerDoParallel(cl)
     # Create a list to store the results
     fis_list <- foreach(i = 1:n_rep, .combine = 'c') %dopar% {
       library(dplyr)
-      library(pegas)
       # Calculate the statistics for the i-th matrix
-      result_fis_stats <- as_tibble(Fst(as.loci(es[[i]]))) %>% select(Fis)
-      return(result_fis_stats$Fis)
+      result_fis_stats <- as.data.frame(pegas::Fst(pegas::as.loci(es[[i]]))) 
+      result_fis_stats <- result_fis_stats %>%
+        tibble::rownames_to_column(var = "Marker") %>%
+        arrange(Marker) %>% select(Fis)
+      return(result_fis_stats)
     }
+    
     # Combine the results into a matrix
-    fis_df <- matrix(unlist(fis_list), nrow = n_rep, byrow = TRUE)
-    fis_df <- t(fis_df)
+    fis_df <-as.data.frame(fis_list)
     # Stop the parallel processing cluster
     stopCluster(cl)
+    
     # Set row names as in result_f_stats
-    rownames(fis_df) <- row.names(Fst(as.loci(es[[1]])))
-    fis_df <- fis_df[order(rownames(fis_df)), ]
-    # fis_df <-fis_df[, -1]
+    rownames(fis_df) <- rownames(result_f_stats)
+    #fis_df <-fis_df[, -1]
     vec <- seq(1, n_rep)
     colnames(fis_df) <- vec
+    
     # Initialize an empty data frame to store the counts
-    fis_df_Greater <- fis_df_Smaller <- numeric(length(rownames(result_f_stats)))
-    # Compare the values in result_stats[1] to result_FST for each column
+    fis_df_Greater <- numeric(sequence_length)
+    fis_df_Smaller <- numeric(sequence_length)
+    
+    # Compare the values in result_f_stats[1] to result_FST for each column
     for (col in colnames(fis_df)) {
-      greater_count <- as_tibble(result_stats[3] > fis_df[,col])
-      smaller_count <- as_tibble(result_stats[3] < fis_df[,col])
+      greater_count <- as_tibble(result_f_stats[3] > fis_df[,col])
+      smaller_count <- as_tibble(result_f_stats[3] < fis_df[,col])
       fis_df_Greater <- cbind(fis_df_Greater, greater_count$`Fis (W&C)`)
       fis_df_Smaller <- cbind(fis_df_Smaller, smaller_count$`Fis (W&C)`)
     }
-
-    # Set row names as in result_stats
-    rownames(fis_df_Smaller) <- rownames(fis_df_Greater) <- rownames(result_stats)
+    
+    # Set row names as in result_f_stats
+    rownames(fis_df_Smaller) <- rownames(fis_df_Greater) <- rownames(result_f_stats)
     fis_df_Smaller <-fis_df_Smaller[, -1]
     fis_df_Greater <-fis_df_Greater[, -1]
     vec <- seq(1, n_rep)
     colnames(fis_df_Smaller) <- colnames(fis_df_Greater) <- vec
     
-    fis_df_Smaller_av <- as.data.frame(fis_df_Smaller) %>%
-      mutate(average = rowSums(across(where(is.numeric)))/n_rep) %>% select(average)
-    fis_df_Greater_av <- as.data.frame(fis_df_Greater) %>%
-      mutate(average = rowSums(across(where(is.numeric)))/n_rep) %>% select(average)
-    rownames(fis_df_Smaller_av) <- rownames(fis_df_Greater_av) <- rownames(result_stats)
+    fis_df_Smaller_av <- as.data.frame(rowMeans(fis_df_Smaller))
+    fis_df_Greater_av <-  as.data.frame(rowMeans(fis_df_Greater))
+    
+    
     fis_df_sg <- merge(fis_df_Smaller_av, fis_df_Greater_av, by="row.names",all.x=TRUE) %>% column_to_rownames('Row.names')
+    
     colnames(fis_df_sg) <- c("smaller", "greater")
-    fis_df_sg_t <- fis_df_sg %>% mutate(`Two-sided p-values` = ifelse(smaller > 0.5, 2 * (1 - smaller), 2 * smaller))
-    # standard deviation SE
-    # Calculate the standard deviation for each element in fis_df
-    std_dev <- as.data.frame(apply(fis_df, 1, sd))
-    colnames(std_dev) <- ("std_dev")
     
-    ################################# Calculate SE #################################
-    # join df 
-    std_dev <- std_dev %>% mutate("SE" = std_dev/sqrt(n_rep)*4)
-    rownames(std_dev) <- c(rownames(fis_df_sg_t))
-    
-    df_merge <- merge(std_dev,fis_df_sg_t, by="row.names",all.x=TRUE) %>% column_to_rownames('Row.names')
-    df_merge <- merge(df_merge, result_stats[3],  by="row.names",all.x=TRUE) %>%
-      column_to_rownames('Row.names')
-    df_merge <- df_merge %>% 
-      mutate("t" = qt(1-0.05/2, n_pop-1)) %>%
-      mutate("95%CI_i" = `Fis (W&C)` - t * SE ) %>% 
-      mutate("95%CI_s" = `Fis (W&C)` + t*SE) %>%
-      mutate()
-    
-    # plot the point plot 
-    library(ggplot2)
-    # Create a ggplot using df_merge
-    p <- ggplot(df_merge, aes(x = rownames(df_merge), y = `Fis (W&C)`)) +
-      geom_point() +
-      geom_errorbar(aes(ymin = `95%CI_i`, ymax = `95%CI_s`), width = 0.2, position = position_dodge(0.05)) +
-      xlab("Category") +
-      ylab("Fis (W&C)")
-    # Rotate X-axis labels for better readability
-    p + theme(axis.text.x = element_text(angle = 45, hjust = 1))
-    
+    # Assuming 'smaller' and 'greater' are columns in your 'fis_df_sg' data frame
+    fis_df_sg_t <- fis_df_sg %>% mutate(`Two-sided p-values` = smaller + (1 - greater))
+    results_merged <- merge(result_f_stats_selec, fis_df_sg_t, by="row.names", all.x=TRUE) 
+    rownames(results_merged) <- results_merged$Row.names
+    # Return the two sided values tab
+    print(results_merged)
   })
+  
+  
+  
+  
+  
+  
+  
+  
+  ### bootstrap over population
+  
+  library(boot)
+  library(dplyr)
+  # Columns to include in the mean calculation
+  columns_to_fstat <- colnames(filtered_data[,6:11])
+  pop_levels <- levels((filtered_data$Population)) 
+  # Convert to numeric and remove rows with missing values
+  
+  #################### need to find a proper to do it. How to mange the missing data ####################
+  filtered_data_na <- na.omit(filtered_data) 
+  ####################################################################################################### 
+  
+  boot_fonction <- function(data, indices, columns) {
+    subset_data <- as.data.frame(data[indices, columns, drop = FALSE])
+    subset_data <- adegenet::df2genind(
+      X = as.matrix(subset_data),
+      sep = "/",
+      ncode = 6,
+      ind.names = filtered_data_na$indv,
+      pop = filtered_data_na$Population,
+      NA.char = "0/0",
+      ploidy = 2,
+      type = "codom",
+      strata = NULL,
+      hierarchy = NULL
+    )
+    fst_results <- as.data.frame(pegas::Fst(pegas::as.loci(subset_data)))
+    results_mat <- fst_results %>% select(Fis) %>% as.matrix()
+    return(results_mat)
+  }
+  
+  
+  library(boot)
+  library(dplyr)
+  # Columns to include in the mean calculation
+  columns_to_fstat <- colnames(filtered_data[,6:11])
+  pop_levels <- levels((filtered_data$Population)) 
+  # Convert to numeric and remove rows with missing values
+  
+  #################### need to find a proper to do it. How to manage the missing data ####################
+  filtered_data_na <- na.omit(filtered_data) 
+  ####################################################################################################### 
+  
+  boot_fonction <- function(data, indices, columns) {
+    subset_data <- as.data.frame(data[indices, columns, drop = FALSE])
+    subset_data <- adegenet::df2genind(
+      X = as.matrix(subset_data),
+      sep = "/",
+      ncode = 6,
+      ind.names = filtered_data_na$indv,
+      pop = filtered_data_na$Population,
+      NA.char = "0/0",
+      ploidy = 2,
+      type = "codom",
+      strata = NULL,
+      hierarchy = NULL
+    )
+    fst_results <- as.data.frame(pegas::Fst(pegas::as.loci(subset_data)))
+    results_mat <- fst_results %>% select(Fis) %>% as.matrix()
+    return(results_mat)
+  }
+  
+  
+  # Perform bootstrapping with stratification
+  boot_mat_strat <- boot(
+    data = filtered_data_na,
+    statistic = boot_fonction,
+    R = n_rep,
+    strata = as.factor(filtered_data_na$Population),
+    columns = columns_to_fstat,
+    parallel = "multicore",
+    ncpus = num_cores
+  )
+  
+  # Display the CI
+  library(broom)
+  boot_mat_strat_CI <- tidy(boot_mat_strat, conf.int=TRUE, conf.method="perc")
+  boot_mat_strat_CI <- as.data.frame(boot_mat_strat_CI)
+  rownames(boot_mat_strat_CI) <- columns_to_fstat
+  boot_mat_strat_CI
+  
 }
 
