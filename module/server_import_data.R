@@ -3,10 +3,7 @@
 
 source("www/helper.R")
 
-
 server_import_data <- function(input, output, session) {
-  print("start")
-  
   # Define the reactive expression to hold the data frame
   df <- reactiveVal()
   # Load default data when the button is clicked

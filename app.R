@@ -44,20 +44,17 @@ source("module/welcome.R")
 
 shiny.react::enableReactDebugMode()
 
-
 ui <- dashboardPage(
   skin = "midnight",
   header = header,
   sidebar = sidebar,
   body = body
 )
-
 server <- function(input, output, session) {
   # Combine server functions from other source files
   server_import_data(input, output, session)
   general_stats_server(input, output, session)
   server_genetic_drift(input, output, session)
 }
-
 
 shinyApp(ui = ui, server = server)

@@ -49,7 +49,6 @@ sidebar <- dashboardSidebar(
               menuItem("Genetic Drift", tabName = "drift", icon = icon("dashboard"))
   )
 )
-
 body <- dashboardBody(
   tabItems(
     tabItem(
