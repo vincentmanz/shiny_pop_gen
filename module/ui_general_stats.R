@@ -70,7 +70,7 @@ general_stats_UI <- function() {
     ),
     fluidRow(
       box(
-        width =8,
+        width =4,
         title = "Panmixia",
         status = "primary",
         solidHeader = TRUE,
@@ -79,17 +79,17 @@ general_stats_UI <- function() {
         actionButton("run_panmixia", "Run")
       )
     ),
-    fluidRow(
-      box(
-        width = 12,
-        title = "Panmixia",
-        status = "primary",
-        solidHeader = TRUE,
-        ## DOWNLOAD
-        downloadButton("download_missing_data", ""),
-        # Display the plot
-        plotOutput("plot_boot")
-      )
-    )
+    # fluidRow(
+    #   box(
+    #     width = 12,
+    #     title = "Panmixia Plot",
+    #     status = "primary",
+    #     solidHeader = TRUE,
+    #     ## DOWNLOAD
+    #     downloadButton("download_missing_data", ""),
+    #     # Display the plot
+    #     plotOutput("plot_boot")
+    #   )
+    # )
   )
 }

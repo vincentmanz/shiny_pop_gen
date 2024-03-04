@@ -79,17 +79,22 @@ server_general_stats <- function(input, output, session) {
       result_stats <- result_stats %>%
         column_to_rownames(., var = "Row.names") %>%
         rownames_to_column(var = "Markers")
+      print(result_stats)
+      print("A")
       result_stats <- result_stats %>% column_to_rownames(var = "Markers")
+      print(result_stats)
+      print("B")
       result_stats_reactive(result_stats)
 
       #### Convert logical vector to character vector of column names
       selected_columns <- c("Markers", names(selected_stats)[selected_stats])
-      result_stats_selec <- result_stats %>% select(all_of(selected_columns))
-
+      result_stats_select <- result_stats %>% select(all_of(selected_columns))
+      print(result_stats)
+      print("C")
       #  render the result
       output$basic_stats_result <- renderTable({
         req(result_stats_selec)
-        return(result_stats_selec)
+        return(result_stats_select)
       })
     }
   })
@@ -156,6 +161,7 @@ server_general_stats <- function(input, output, session) {
   observeEvent(input$run_plot_FIS, {
     # Retrieve result_stats from the reactive value
     result_stats <- result_stats_reactive()
+    print(result_stats)
     missing_data <- missing_data_reac()
     # Data formatting
     fis <- as.data.frame(result_stats) %>% select("Fis (W&C)", "Markers")
@@ -224,9 +230,9 @@ server_general_stats <- function(input, output, session) {
     pop_levels <- levels((filtered_data$level1))
     # Convert to numeric and remove rows with missing values
 
-    #################### need to find a proper to do it. How to manage the missing data ####################
+    #################### need to find a proper to do it. How to manage the missing data #################### # nolint: line_length_linter.
     filtered_data_na <- na.omit(filtered_data)
-    #######################################################################################################
+    ####################################################################################################### # nolint
 
     boot_fonction <- function(data, indices, columns) {
       subset_data <- as.data.frame(data[indices, columns, drop = FALSE])
@@ -261,7 +267,7 @@ server_general_stats <- function(input, output, session) {
     )
 
     # Display the CI
-    boot_mat_strat_CI <- tidy(boot_mat_strat, conf.int = TRUE, conf.method = "perc")
+    boot_mat_strat_CI <- tidy(boot_mat_strat, conf.int = TRUE, conf.method = "perc") # nolint: line_length_linter, object_name_linter.
     boot_mat_strat_CI <- as.data.frame(boot_mat_strat_CI)
     rownames(boot_mat_strat_CI) <- columns_to_fstat
     print(boot_mat_strat_CI)
@@ -271,17 +277,18 @@ server_general_stats <- function(input, output, session) {
       return(boot_mat_strat_CI)
     })
 
-    # Reset rownames as a column in the data frame
-    boot_mat_strat_CI$Marker <- rownames(boot_mat_strat_CI)
-    # Convert Sample to a factor (assuming it contains unique values)
-    boot_mat_strat_CI$Marker <- as.factor(boot_mat_strat_CI$Marker)
-    output$plot_boot <- renderPlot({
-      boot_mat_strat_CI %>%
-        ggplot(aes(x = Marker, y = statistic)) +
-        geom_point() +
-        geom_errorbar(aes(ymin = as.numeric(conf.low), ymax = as.numeric(conf.high)), width = 0.2, position = position_dodge(0.05)) +
-        xlab("Loci") +
-        ylab("Fis (W&C)")
-    })
+    # # Reset rownames as a column in the data frame
+    # boot_mat_strat_CI$Marker <- rownames(boot_mat_strat_CI)
+    # # Convert Sample to a factor (assuming it contains unique values)
+    # boot_mat_strat_CI$Marker <- as.factor(boot_mat_strat_CI$Marker)
+    # output$plot_boot <- renderPlot({
+    #   boot_mat_strat_CI %>%
+    #     ggplot(aes(x = Marker, y = statistic)) +
+    #     geom_point() +
+    #     geom_errorbar(aes(ymin = as.numeric(conf.low), ymax = as.numeric(conf.high)), width = 0.2, position = position_dodge(0.05)) + # nolint: line_length_linter.
+    #     xlab("Loci") +
+    #     ylab("Fis (W&C)")
+    #     return(boot_mat_strat_CI)
+    # })
   })
 }
