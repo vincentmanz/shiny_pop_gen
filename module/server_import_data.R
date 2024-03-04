@@ -10,6 +10,7 @@ server_import_data <- function(input, output, session) {
   observeEvent(input$load_default_data, {
     df( read.csv("https://www.t-de-meeus.fr/Enseign/BoophilusAdultsDataCattle.txt", header = input$header, sep = input$sep))
   })
+  print("loaded")
   # Handle file upload
   observeEvent(input$file1, {req(input$file1)
     df(read.csv(input$file1$datapath, header = input$header, sep = input$sep, quote = input$quote))
