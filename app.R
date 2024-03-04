@@ -10,9 +10,7 @@ library(tidyverse)
 library(tidyr)
 library(dplyr)
 library(broom)
-#library(thematic)
-#library(ragg)
-#options(shiny.useragg = TRUE)
+
 
 #population genomics 
 library(hierfstat)

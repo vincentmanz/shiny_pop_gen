@@ -1,5 +1,4 @@
 # welcome.R
-shinythemes::themeSelector()
 
 # Logo
 header <- dashboardHeader(title = "GenoPop",
