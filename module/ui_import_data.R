@@ -4,6 +4,7 @@
 #  tags$a(id = outputId, class = "btn btn-default shiny-download-link", href = paste("data-", Sys.Date(), ".csv", sep = "\t"), 
 #         target = "contents", download = NA, icon("download"), label)
 #}
+
 generateImportDataUI <- function() {
   fluidPage(
     fluidRow(

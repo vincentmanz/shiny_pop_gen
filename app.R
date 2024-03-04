@@ -1,9 +1,10 @@
-# app.R #
+# app.R
+
 #Interface
 library(shiny)
-library(shinyalert)
 library(shinydashboard)
 library(shinydashboardPlus)
+library(shinyalert)
 
 #data manipulation
 library(tidyverse)
@@ -11,8 +12,7 @@ library(tidyr)
 library(dplyr)
 library(broom)
 
-
-#population genomics 
+#population genomics
 library(hierfstat)
 library(adegenet)
 library(pegas)
@@ -25,6 +25,7 @@ library(leaflet)
 library(plotly)
 library(kableExtra)
 library(ggplot2)
+
 
 
 # Source server and UI files
@@ -48,11 +49,14 @@ ui <- dashboardPage(
   sidebar = sidebar,
   body = body
 )
+
 server <- function(input, output, session) {
   # Combine server functions from other source files
-  server_import_data(input, output, session)
-  general_stats_server(input, output, session)
-  server_genetic_drift(input, output, session)
+server_import_data(input, output, session)
+server_general_stats(input, output, session)
+server_genetic_drift(input, output, session)
 }
 
-shinyApp(ui = ui, server = server)
+parasiteR_app <- shinyApp(ui = ui, server = server)
+
+runApp(parasiteR_app)
