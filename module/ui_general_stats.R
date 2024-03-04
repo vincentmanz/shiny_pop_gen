@@ -70,6 +70,17 @@ general_stats_UI <- function() {
     ),
     fluidRow(
       box(
+        width =8,
+        title = "Panmixia",
+        status = "primary",
+        solidHeader = TRUE,
+        numericInput("numboot", "Number of bootstrap replicates",value = 1000,max = 10000),
+        textInput("level1", "Population unit", value = "Population"),
+        actionButton("run_panmixia", "Run")
+      )
+    ),
+    fluidRow(
+      box(
         width = 12,
         title = "Panmixia",
         status = "primary",
@@ -77,7 +88,7 @@ general_stats_UI <- function() {
         ## DOWNLOAD
         downloadButton("download_missing_data", ""),
         # Display the plot
-
+        plotOutput("plot_boot")
       )
     )
   )

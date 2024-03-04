@@ -1,4 +1,5 @@
 # welcome.R
+shinythemes::themeSelector()
 
 # Logo
 header <- dashboardHeader(title = "GenoPop",
@@ -13,7 +14,6 @@ header <- dashboardHeader(title = "GenoPop",
 linebreaks <- function(n) {HTML(strrep(br(), n))}
 
 # Create a data frame for the one example
-
 data_one_col <- data.frame(
   Population = c("Boulouparis", "Boulouparis", "Gadji", "PortLaguerre", "Sarramea"),
   B12 = c("192/194", "200/200", "0/0", "145/145", "0/0"),

@@ -5,8 +5,7 @@ source("www/helper.R")
 
 
 server_import_data <- function(input, output, session) {
-  
-  
+  print("start")
   
   # Define the reactive expression to hold the data frame
   df <- reactiveVal()
@@ -234,7 +233,6 @@ server_import_data <- function(input, output, session) {
         output$results_table <- renderTable({
           results_table
         })
-        
         
         # Render info boxes
         output$box_population <- renderInfoBox({renderInfoBoxUI("Population", number_pop, "map-location-dot", "purple")})

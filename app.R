@@ -1,21 +1,32 @@
 # app.R #
-
+#Interface
 library(shiny)
-library(shinythemes)
+library(shinyalert)
+library(shinydashboard)
+library(shinydashboardPlus)
+
+#data manipulation
+library(tidyverse)
+library(tidyr)
+library(dplyr)
+library(broom)
+#library(thematic)
+#library(ragg)
+#options(shiny.useragg = TRUE)
+
+#population genomics 
+library(hierfstat)
+library(adegenet)
+library(pegas)
+library(poppr)
+library(boot)
+
+#themes and graphics
+library(hrbrthemes)
 library(leaflet)
 library(plotly)
-library(tidyr)
-library(shinydashboard)
-library(dplyr)
-library(shinyalert)
-library(shinydashboardPlus)
-library(hierfstat)
 library(kableExtra)
-library(adegenet)
-library(tidyverse)
-library(pegas)
-library(hrbrthemes)
-library(poppr)
+library(ggplot2)
 
 
 # Source server and UI files
@@ -29,10 +40,10 @@ source("module/ui_general_stats.R")
 
 source("www/helper.R")
 
-
 source("module/welcome.R")
 
 shiny.react::enableReactDebugMode()
+
 
 ui <- dashboardPage(
   skin = "midnight",
