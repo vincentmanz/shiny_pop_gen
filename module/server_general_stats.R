@@ -7,7 +7,10 @@ filtered_data <- read.csv("/media/vincent/vincent/dev/parasiteR/data/data-2023-0
 # information inherited from previous page
 n_marker <- 6
 n_pop <- 8
-sequence_length <- length(6:11)
+marker_start <- 6
+marker_end <- 11
+sequence_length <- length(marker_start:marker_end)
+
 n_indv <- nrow(filtered_data)
 pops <- unique(filtered_data$Population)
 ## Specify the number of cores available
@@ -36,6 +39,8 @@ server_general_stats <- function(input, output, session) {
   missing_data_reac <- reactiveVal(NULL)
   # Genind data reactive value
   mydata_genind_reac <- reactiveVal(NULL)
+  # Filtered data formated
+  filtered_data_reac <- reactiveVal(NULL)
 
   # Function to run the basic.stats and render the result
   observeEvent(input$run_basic_stats, {
@@ -55,6 +60,7 @@ server_general_stats <- function(input, output, session) {
       ## Create genind object
       filtered_data <- data.frame(indv = paste(substr(filtered_data$Population, 1, 3), row.names(filtered_data), sep = "."), filtered_data)
       population <- filtered_data$Population
+      filtered_data_reac(filtered_data)
       mydata_genind <- df2genind(X = filtered_data[, column_genotype_start:column_genotype_end], sep = "/", ncode = 6, ind.names = filtered_data$indv, pop = filtered_data$Population, NA.char = "NA", ploidy = 2, type = "codom", strata = NULL, hierarchy = NULL)
       mydata_hierfstat <- genind2hierfstat(mydata_genind)
       mydata_genind_reac(mydata_genind)
@@ -79,21 +85,15 @@ server_general_stats <- function(input, output, session) {
       result_stats <- result_stats %>%
         column_to_rownames(., var = "Row.names") %>%
         rownames_to_column(var = "Markers")
-      print(result_stats)
-      print("A")
       result_stats <- result_stats %>% column_to_rownames(var = "Markers")
-      print(result_stats)
-      print("B")
       result_stats_reactive(result_stats)
 
       #### Convert logical vector to character vector of column names
-      selected_columns <- c("Markers", names(selected_stats)[selected_stats])
+      selected_columns <- c(names(selected_stats)[selected_stats])
       result_stats_select <- result_stats %>% select(all_of(selected_columns))
-      print(result_stats)
-      print("C")
       #  render the result
       output$basic_stats_result <- renderTable({
-        req(result_stats_selec)
+        req(result_stats_select)
         return(result_stats_select)
       })
     }
@@ -102,10 +102,9 @@ server_general_stats <- function(input, output, session) {
   # Function to handle the plot generation
   observeEvent(input$run_plot_heatmap, {
     # Data shaping
-    filtered_data <- read.csv("/media/vincent/vincent/dev/parasiteR/data/data-2023-09-11 (2).csv", header = TRUE)
-    filtered_data <- data.frame(indv = paste(substr(filtered_data$Population, 1, 3), row.names(filtered_data), sep = "."), filtered_data)
-    population <- filtered_data$Population
-    mydata_genind <- df2genind(X = filtered_data[, column_genotype_start:column_genotype_end], sep = "/", ncode = 6, ind.names = filtered_data$indv, pop = filtered_data$Population, NA.char = "0/0", ploidy = 2, type = "codom", strata = NULL, hierarchy = NULL)
+    filtered_data_indv <- filtered_data_reac()
+    population <- filtered_data_indv$Population
+    mydata_genind <- df2genind(X = filtered_data_indv[, column_genotype_start:column_genotype_end], sep = "/", ncode = 6, ind.names = filtered_data_indv$indv, pop = filtered_data$Population, NA.char = "0/0", ploidy = 2, type = "codom", strata = NULL, hierarchy = NULL)
     missing_data <- info_table(mydata_genind, plot = FALSE, percent = TRUE, df = TRUE)
     missing_data <- as.data.frame(missing_data) %>% spread(key = Locus, value = Missing)
     missing_data <- missing_data %>% column_to_rownames(var = "Population") ### !! alphabetically ordered index
@@ -161,7 +160,7 @@ server_general_stats <- function(input, output, session) {
   observeEvent(input$run_plot_FIS, {
     # Retrieve result_stats from the reactive value
     result_stats <- result_stats_reactive()
-    print(result_stats)
+    result_stats <- result_stats %>% rownames_to_column(var = "Markers")
     missing_data <- missing_data_reac()
     # Data formatting
     fis <- as.data.frame(result_stats) %>% select("Fis (W&C)", "Markers")
@@ -188,21 +187,25 @@ server_general_stats <- function(input, output, session) {
     # retrieve mydata_genind from the reactive value
     mydata_genind <- mydata_genind_reac()
     result_stats <- result_stats_reactive()
-
+    filtered_data_indv <- filtered_data_reac()
     # Access the input values
     n_rep <- input$numboot
-    level1 <- input$level1
+    ###########################
+    level1 <- input$level1 # change the level to be reactive and put a dropdown menu to select from the filtered_data_indv
+    ##########################
+    print(n_rep)
+    print(level1)
+    ## bootstrap over level1
+    ### Columns to include in the mean calculation
+    columns_to_fstat <- colnames(filtered_data_indv[, marker_start:marker_end])
 
-    ### bootstrap over population
+    print(columns_to_fstat)
+    print(head(filtered_data_indv))
+    print("C")
 
-    # Columns to include in the mean calculation
-    columns_to_fstat <- colnames(filtered_data[, 6:11])
-    pop_levels <- levels((filtered_data$Population))
-    # Convert to numeric and remove rows with missing values
-
-    #################### need to find a proper to do it. How to mange the missing data ####################
-    filtered_data_na <- na.omit(filtered_data)
-    #######################################################################################################
+    print(length(filtered_data_indv$indv))
+    print("D")
+    print(length(filtered_data_indv$Population))
 
     boot_fonction <- function(data, indices, columns) {
       subset_data <- as.data.frame(data[indices, columns, drop = FALSE])
@@ -210,8 +213,8 @@ server_general_stats <- function(input, output, session) {
         X = as.matrix(subset_data),
         sep = "/",
         ncode = 6,
-        ind.names = filtered_data_na$indv,
-        pop = filtered_data_na$Population,
+        ind.names = filtered_data_indv$indv,
+        pop = filtered_data_indv$Population,
         NA.char = "0/0",
         ploidy = 2,
         type = "codom",
@@ -224,71 +227,45 @@ server_general_stats <- function(input, output, session) {
         as.matrix()
       return(results_mat)
     }
-
-    # Columns to include in the mean calculation
-    columns_to_fstat <- colnames(filtered_data[, 6:11])
-    pop_levels <- levels((filtered_data$level1))
-    # Convert to numeric and remove rows with missing values
-
-    #################### need to find a proper to do it. How to manage the missing data #################### # nolint: line_length_linter.
-    filtered_data_na <- na.omit(filtered_data)
-    ####################################################################################################### # nolint
-
-    boot_fonction <- function(data, indices, columns) {
-      subset_data <- as.data.frame(data[indices, columns, drop = FALSE])
-      subset_data <- adegenet::df2genind(
-        X = as.matrix(subset_data),
-        sep = "/",
-        ncode = 6,
-        ind.names = filtered_data_na$indv,
-        pop = filtered_data_na$level1,
-        NA.char = "0/0",
-        ploidy = 2,
-        type = "codom",
-        strata = NULL,
-        hierarchy = NULL
-      )
-      fst_results <- as.data.frame(pegas::Fst(pegas::as.loci(subset_data)))
-      results_mat <- fst_results %>%
-        select(Fis) %>%
-        as.matrix()
-      return(results_mat)
-    }
+    print("E")
 
     # Perform bootstrapping with stratification
     boot_mat_strat <- boot(
-      data = filtered_data_na,
+      sim = "ordinary",
+      data = filtered_data_indv,
       statistic = boot_fonction,
       R = n_rep,
-      strata = as.factor(filtered_data_na$level1),
+      strata =  as.numeric(as.factor(filtered_data_indv$Population)),
       columns = columns_to_fstat,
       parallel = "multicore",
       ncpus = num_cores
     )
+    print("F")
 
     # Display the CI
     boot_mat_strat_CI <- tidy(boot_mat_strat, conf.int = TRUE, conf.method = "perc") # nolint: line_length_linter, object_name_linter.
     boot_mat_strat_CI <- as.data.frame(boot_mat_strat_CI)
     rownames(boot_mat_strat_CI) <- columns_to_fstat
-    print(boot_mat_strat_CI)
     #  render the result
     output$basic_bbot_result <- renderTable({
       req(boot_mat_strat_CI)
       return(boot_mat_strat_CI)
     })
+    print("G")
+    print(boot_mat_strat_CI)
 
-    # # Reset rownames as a column in the data frame
-    # boot_mat_strat_CI$Marker <- rownames(boot_mat_strat_CI)
-    # # Convert Sample to a factor (assuming it contains unique values)
-    # boot_mat_strat_CI$Marker <- as.factor(boot_mat_strat_CI$Marker)
-    # output$plot_boot <- renderPlot({
-    #   boot_mat_strat_CI %>%
-    #     ggplot(aes(x = Marker, y = statistic)) +
-    #     geom_point() +
-    #     geom_errorbar(aes(ymin = as.numeric(conf.low), ymax = as.numeric(conf.high)), width = 0.2, position = position_dodge(0.05)) + # nolint: line_length_linter.
-    #     xlab("Loci") +
-    #     ylab("Fis (W&C)")
-    #     return(boot_mat_strat_CI)
-    # })
+    # Reset rownames as a column in the data frame
+    boot_mat_strat_CI$Marker <- rownames(boot_mat_strat_CI)
+    # Convert Sample to a factor (assuming it contains unique values)
+    boot_mat_strat_CI$Marker <- as.factor(boot_mat_strat_CI$Marker)
+    output$plot_boot <- renderPlot({
+      boot_mat_strat_CI %>%
+        ggplot(aes(x = Marker, y = statistic)) +
+        geom_point() +
+        geom_errorbar(aes(ymin = as.numeric(conf.low), ymax = as.numeric(conf.high)), width = 0.2, position = position_dodge(0.05)) + # nolint: line_length_linter.
+        xlab("Loci") +
+        ylab("Fis (W&C)")
+        return(boot_mat_strat_CI)
+    })
   })
 }
