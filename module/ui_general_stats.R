@@ -35,22 +35,22 @@ general_stats_UI <- function() {
     ),
     fluidRow(
       box(
+        title = "Heatmap",
         width = 4,
-        title = "Plot",
         status = "primary",
         solidHeader = TRUE,
         actionButton("run_plot_heatmap", "Heatmap")
       ),
       box(
-        width = 4,
         title = "GST",
+        width = 4,
         status = "primary",
         solidHeader = TRUE,
         actionButton("run_plot_GST", "GST")
       ),
-      box(
-        width = 4,
+      box(        
         title = "FIS",
+        width = 4,
         status = "primary",
         solidHeader = TRUE,
         actionButton("run_plot_FIS", "FIS")
@@ -59,7 +59,7 @@ general_stats_UI <- function() {
     fluidRow(
       box(
         width = 12,
-        title = "Plots",
+        title = "Plot result",
         status = "primary",
         solidHeader = TRUE,
         ## DOWNLOAD
