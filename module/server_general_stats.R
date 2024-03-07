@@ -1,4 +1,3 @@
-
 # server_general_stats.R
 ################################################################################
 # environment variables
@@ -31,7 +30,6 @@ n_rep <- 1000
 #   c("Ho", "Hs", "Ht", "Fis (W&C)", "Fst (W&C)", "Fis (Nei)", "Fst (Nei)", "GST")
 
 ################################################################################
-
 # Define the server logic
 server_general_stats <- function(input, output, session) {
   # Create a reactive value to store the output of the general stats
@@ -40,9 +38,41 @@ server_general_stats <- function(input, output, session) {
   missing_data_reac <- reactiveVal(NULL)
   # Filtered data formated
   filtered_data_reac <- reactiveVal(NULL)
-  
+  # Define a reactiveValues object to store the plot
+  plot_output <- reactiveValues()
+  # Define a reactiveValues object to store mydata_genind
+  mydata_genind_reac <- reactiveVal(NULL)
+  # Define a reactiveValues object to store mydata_hierfstat
+  mydata_hierfstat_reac <- reactiveVal(NULL)
+
+  ## Create genind object
+  filtered_data <- data.frame(indv = paste(substr(filtered_data$Population, 1, 3), row.names(filtered_data), sep = "."), filtered_data)
+  filtered_data_reac(filtered_data)
+  # Compute genind object
+  mydata_genind <- df2genind(X = filtered_data[, column_genotype_start:column_genotype_end], sep = "/", ncode = 6, ind.names = filtered_data$indv, pop = filtered_data$Population, NA.char = "NA", ploidy = 2, type = "codom", strata = NULL, hierarchy = NULL) # nolint: line_length_linter.
+  mydata_genind_reac(mydata_genind)
+  # Compute hierfstat object
+  mydata_hierfstat <- genind2hierfstat(mydata_genind)
+  mydata_hierfstat_reac(mydata_hierfstat_reac)
+  # create the missing df
+  mydata_genind <- df2genind(X = filtered_data[, column_genotype_start:column_genotype_end], sep = "/", ncode = 6, ind.names = filtered_data$indv, pop = filtered_data$Population, NA.char = "0/0", ploidy = 2, type = "codom", strata = NULL, hierarchy = NULL)
+  missing_data <- info_table(mydata_genind, plot = FALSE, percent = TRUE, df = TRUE)
+  missing_data <- as.data.frame(missing_data) %>% spread(key = Locus, value = Missing)
+  missing_data <- missing_data %>% column_to_rownames(var = "Population") ### !! alphabetically ordered index
+  missing_data <- missing_data * 100
+  missing_data_reac(missing_data)
+
   # Function to run the basic.stats and render the result
   observeEvent(input$run_basic_stats, {
+    # Retrieve reactive value
+mydata_hierfstat_a <- mydata_hierfstat_reac()
+    mydata_genind_a <- mydata_genind_reac()
+      print("aa")
+#print(mydata_hierfstat_a)
+          print("start")
+#print(mydata_genind_a)
+
+    # Retrieve the stats selected values
     selected_stats <- c(
       "Ho" = input$ho_checkbox,
       "Hs" = input$hs_checkbox,
@@ -55,28 +85,23 @@ server_general_stats <- function(input, output, session) {
       "GST" = input$GST_checkbox,
       "GST''" = input$GST_sec_checkbox
     )
+    # Create the df stats selected
     if (length(selected_stats) > 0) {
-      ## Create genind object
-      filtered_data <- data.frame(indv = paste(substr(filtered_data$Population, 1, 3), row.names(filtered_data), sep = "."), filtered_data)
-      filtered_data_reac(filtered_data)
-      # Compute genind object
-      mydata_genind <- df2genind(X = filtered_data[, column_genotype_start:column_genotype_end], sep = "/", ncode = 6, ind.names = filtered_data$indv, pop = filtered_data$Population, NA.char = "NA", ploidy = 2, type = "codom", strata = NULL, hierarchy = NULL)
-      # Compute hierfstat object
-      mydata_hierfstat <- genind2hierfstat(mydata_genind)
-      
       ## Compute Nei diversity
-      result <- basic.stats(mydata_hierfstat) # hierfstat
+      print("1")
+      result <- basic.stats(mydata_hierfstat_a) # hierfstat
+      print("2")
       df_resutl_basic <- as.data.frame(result$perloc)
-      
+      print("A")
       ## Compute Weir and Cockrham estimates of F-statistics - FIS and FST
-      data <- as.data.frame(as.loci(mydata_genind))
+      data <- as.data.frame(as.loci(mydata_genind_a))
       result_f_stats <- Fst(as.loci(data)) # pegas
       colnames(result_f_stats) <- c("Fit (W&C)", "Fst (W&C)", "Fis (W&C)")
-      
+      print("B")
       ## compute the Gstats
       df_resutl_basic <- df_resutl_basic %>% mutate("GST" = 1 - Hs / Ht)
       df_resutl_basic <- df_resutl_basic %>% mutate("GST''" = (n_pop * (Ht - Hs)) / ((n_pop * Hs - Ht) * (1 - Hs)))
-      
+      print("B")
       ## formatting the output table
       result_stats <- merge(result_f_stats, df_resutl_basic, by = "row.names", all.x = TRUE)
       colnames(result_stats)[11] <- "Fst (Nei)"
@@ -86,7 +111,7 @@ server_general_stats <- function(input, output, session) {
       #   rownames_to_column(var = "Markers")
       result_stats <- result_stats %>% column_to_rownames(var = "Row.names")
       result_stats_reactive(result_stats)
-      
+      print(C)
       #### Convert logical vector to character vector of column names
       selected_columns <- c(names(selected_stats)[selected_stats])
       result_stats_select <- result_stats %>% select(all_of(selected_columns))
@@ -95,21 +120,25 @@ server_general_stats <- function(input, output, session) {
         req(result_stats_select)
         return(result_stats_select)
       })
+      # Downloadable csv of selected dataset ----
+      output$download_gstats_csv <- downloadHandler(
+        filename = function() {
+          paste("basic_stats_result", ".csv", sep = "")
+        },
+        content = function(file) {
+          write.csv(result_stats_select, file, row.names = TRUE)
+        }
+      )
     }
   })
-  
+
   # Function to handle the plot generation
   observeEvent(input$run_plot_heatmap, {
     # Retrieve reactive value
     filtered_data_indv <- filtered_data_reac()
-    
-    # Data shaping
-    mydata_genind <- df2genind(X = filtered_data_indv[, column_genotype_start:column_genotype_end], sep = "/", ncode = 6, ind.names = filtered_data_indv$indv, pop = filtered_data$Population, NA.char = "0/0", ploidy = 2, type = "codom", strata = NULL, hierarchy = NULL)
-    missing_data <- info_table(mydata_genind, plot = FALSE, percent = TRUE, df = TRUE)
-    missing_data <- as.data.frame(missing_data) %>% spread(key = Locus, value = Missing)
-    missing_data <- missing_data %>% column_to_rownames(var = "Population") ### !! alphabetically ordered index
-    missing_data <- missing_data * 100
-    missing_data_reac(missing_data)
+    missing_data <- missing_data_reac()
+
+
     ### heatmap
     # plot_missing_data <- heatmaply((missing_data),
     #                                dendrogram = "none",
@@ -122,14 +151,15 @@ server_general_stats <- function(input, output, session) {
     #                                titleX = FALSE,
     #                                hide_colorbar = FALSE,
     #                                branches_lwd = 0.1,
-    #                                label_names = c("Population", "Marker", "Percentage of missing data"),
+    #                                label_names = c("Population", "Marker", "Percentage of missing data"), # nolint: line_length_linter.
     #                                fontsize_row = 8, fontsize_col = 8,
     #                                labCol = colnames(missing_data),
     #                                labRow = rownames(missing_data),
     #                                heatmap_layers = theme(axis.line=element_blank()),
     #                                colorbar_lab = "Percentages")
     # heatmaply does not print on the shiny app find a new solution
-    
+
+    # Data shaping
     missing_data <- rownames_to_column(missing_data, var = "location")
     ## Melt the data for ggplot2
     heatmap_data_melted <- melt(missing_data, value.name = "location")
@@ -141,6 +171,15 @@ server_general_stats <- function(input, output, session) {
         labs(x = "Column Names", y = "Row Names", fill = "Value") +
         theme(axis.text.x = element_text(angle = 90, hjust = 1)) # Rotate x-axis labels for better visibility
     })
+    # Downloadable png of the selected plot ----
+    output$download_plot_png <- downloadHandler(
+      filename = function() {
+        paste("plot_output", ".png", sep = "")
+      },
+      content = function(file) {
+        ggsave(filename = file, plot = plot_output, dpi = 300)
+      }
+    )
   })
   # Function to handle the plot generation for GST
   observeEvent(input$run_plot_GST, {
@@ -154,36 +193,61 @@ server_general_stats <- function(input, output, session) {
         geom_smooth(method = lm, color = "red", se = FALSE) +
         theme_ipsum()
     })
+    # Downloadable png of the selected plot ----
+    output$download_plot_png <- downloadHandler(
+      filename = function() {
+        paste("plot_output", ".png", sep = "")
+      },
+      content = function(file) {
+        ggsave(filename = file, plot = plot_output, dpi = 300)
+      }
+    )
   })
-  
+
   # Function to handle the plot generation for FIS
   observeEvent(input$run_plot_FIS, {
     # Retrieve reactive values
     result_stats <- result_stats_reactive()
     result_stats <- result_stats %>% rownames_to_column(var = "Markers")
     missing_data <- missing_data_reac()
-    
+    print(head(missing_data))
     # Data formatting
     fis <- as.data.frame(result_stats) %>% select("Fis (W&C)", "Markers")
     fis <- column_to_rownames(fis, var = "Markers")
-    
-    missing_data_transposed <- t(missing_data)
+    print("A")
+    missing_data_transposed <- t(as.data.frame(missing_data))
+    print(head(missing_data_transposed))
+    print("A1")
     missing_data_transposed_total <- as.data.frame(missing_data_transposed) %>% select("Total")
+    print(head(missing_data_transposed_total))
+    print("B")
+
     missing_data_transposed_total <- subset(missing_data_transposed_total, !rownames(missing_data_transposed_total) %in% "Mean")
     colnames(missing_data_transposed_total) <- ("Missing %")
     fis_missing_merged <- merge(fis, missing_data_transposed_total, by = "row.names", all.x = TRUE) %>% column_to_rownames("Row.names")
-    
-    # Generate the FIS plot
+    print("C")
+
+    # Generate the FIS plot and store it in plot_output
+    plot_output$plot <- ggplot(fis_missing_merged, aes(x = `Missing %`, y = `Fis (W&C)`)) +
+      geom_point() +
+      theme_ipsum() +
+      scale_x_continuous(labels = scales::number_format(accuracy = 0.01)) +
+      geom_smooth(method = "lm", se = FALSE, color = "red")
+    # Define the output$plot_output to render the plot
     output$plot_output <- renderPlot({
-      ## Plot missing data / FIS
-      ggplot(fis_missing_merged, aes(x = `Missing %`, y = `Fis (W&C)`)) +
-        geom_point() +
-        theme_ipsum() +
-        scale_x_continuous(labels = scales::number_format(accuracy = 0.01)) +
-        geom_smooth(method = "lm", se = FALSE, color = "red")
+      plot_output$plot
     })
+    # Downloadable png of the selected plot ----
+    output$download_plot_png <- downloadHandler(
+      filename = function() {
+        paste("plot_output", ".png", sep = "")
+      },
+      content = function(file) {
+        ggsave(filename = file, plot = plot_output$plot, dpi = 300)
+      }
+    )
   })
-  
+
   observeEvent(input$run_panmixia, {
     # retrieve reactive values
     result_stats <- result_stats_reactive()
@@ -195,7 +259,7 @@ server_general_stats <- function(input, output, session) {
     ##########################
     # bootstrap over level1, Columns to include in the botraping
     columns_to_fstat <- colnames(filtered_data_indv[, marker_start:marker_end])
-    
+
     boot_fonction <- function(data, indices, columns) {
       subset_data <- as.data.frame(data[indices, columns, drop = FALSE])
       subset_data <- adegenet::df2genind(
@@ -211,7 +275,9 @@ server_general_stats <- function(input, output, session) {
         hierarchy = NULL
       )
       fst_results <- as.data.frame(pegas::Fst(pegas::as.loci(subset_data)))
-      results_mat <- fst_results %>% select(Fis) %>% as.matrix()
+      results_mat <- fst_results %>%
+        select(Fis) %>%
+        as.matrix()
       return(results_mat)
     }
     print("Starting bootstrapping...")
@@ -221,12 +287,12 @@ server_general_stats <- function(input, output, session) {
       data = filtered_data_indv,
       statistic = boot_fonction,
       R = n_rep,
-      strata =  as.numeric(as.factor(filtered_data_indv$Population)),
+      strata = as.numeric(as.factor(filtered_data_indv$Population)),
       columns = columns_to_fstat,
       parallel = "multicore",
       ncpus = num_cores
     )
-    
+
     # format the bootstrap results
     boot_mat_strat_CI <- tidy(boot_mat_strat, conf.int = TRUE, conf.method = "perc") # nolint: line_length_linter, object_name_linter.
     boot_mat_strat_CI <- as.data.frame(boot_mat_strat_CI)

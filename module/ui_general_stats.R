@@ -28,7 +28,7 @@ general_stats_UI <- function() {
         status = "primary",
         solidHeader = TRUE,
         ## DOWNLOAD
-        downloadButton("download_gstats_csv", ""),
+        downloadButton("download_gstats_csv", "Download"),
         # Display the table here
         tableOutput("basic_stats_result")
       )
@@ -63,7 +63,7 @@ general_stats_UI <- function() {
         status = "primary",
         solidHeader = TRUE,
         ## DOWNLOAD
-        downloadButton("download_missing_data", ""),
+        downloadButton("download_plot_png", "Download"),
         # Display the plot
         plotOutput("plot_output")
       )
