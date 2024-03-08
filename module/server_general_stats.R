@@ -1,5 +1,13 @@
 # server_general_stats.R
 ################################################################################
+# to do list:
+  # - add level1 as a reactive value
+  # - add a dropdown menu to select the level1
+  # - in the ui a tableOutput for the bootstrapping result
+  # - in the ui a plotOutput for the bootstrapping result
+
+  # - the environment variable reactive between all the modules
+################################################################################
 # environment variables
 
 filtered_data <- read.csv("~/projects/shiny_pop_gen/shiny_pop_gen/data/data-2023-09-11 (2).csv", header = TRUE)
