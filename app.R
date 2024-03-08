@@ -1,26 +1,26 @@
 # app.R
 
-#Interface
+# Interface
 library(shiny)
 library(shinydashboard)
 library(shinydashboardPlus)
 library(shinyalert)
 
-#data manipulation
+# data manipulation
 library(tidyverse)
 library(tidyr)
 library(dplyr)
 library(broom)
 library(reshape2)
 
-#population genomics
+# population genomics
 library(hierfstat)
 library(adegenet)
 library(pegas)
 library(poppr)
 library(boot)
 
-#themes and graphics
+# themes and graphics
 library(hrbrthemes)
 library(leaflet)
 library(plotly)

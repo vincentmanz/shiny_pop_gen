@@ -5,7 +5,7 @@ general_stats_UI <- function() {
     fluidRow(
       box(
         width = 2,
-        title = "Basic diversity and differentiation statistics",             
+        title = "Basic diversity and differentiation statistics",
         status = "primary",
         h4("Select indices"),
         solidHeader = TRUE,
@@ -28,7 +28,7 @@ general_stats_UI <- function() {
         status = "primary",
         solidHeader = TRUE,
         ## DOWNLOAD
-        downloadButton("download_gstats_csv", ""),
+        downloadButton("download_gstats_csv", "Download CSV"),
         # Display the table here
         tableOutput("basic_stats_result")
       )
@@ -48,7 +48,7 @@ general_stats_UI <- function() {
         solidHeader = TRUE,
         actionButton("run_plot_GST", "GST")
       ),
-      box(        
+      box(
         title = "FIS",
         width = 4,
         status = "primary",
@@ -63,18 +63,18 @@ general_stats_UI <- function() {
         status = "primary",
         solidHeader = TRUE,
         ## DOWNLOAD
-        downloadButton("download_missing_data", ""),
-        # Display the plot
+        downloadButton("download_plot_png", "Download"),
+        # Display the plot using the reactive expression
         plotOutput("plot_output")
       )
     ),
     fluidRow(
       box(
-        width =4,
+        width = 4,
         title = "Panmixia",
         status = "primary",
         solidHeader = TRUE,
-        numericInput("numboot", "Number of bootstrap replicates",value = 1000,max = 10000),
+        numericInput("numboot", "Number of bootstrap replicates", value = 1000, max = 10000),
         textInput("level1", "Population unit", value = "Population"),
         actionButton("run_panmixia", "Run")
       )
