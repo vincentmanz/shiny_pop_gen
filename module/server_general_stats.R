@@ -81,115 +81,117 @@ server_general_stats <- function(input, output, session) {
       "GST" = input$GST_checkbox,
       "GST''" = input$GST_sec_checkbox
     )
-    # Create the df stats selected
-    if (length(selected_stats) > 0) {
-      ## Compute Nei diversity
-      result <- basic.stats(mydata_hierfstat_a) # hierfstat
-      df_resutl_basic <- as.data.frame(result$perloc)
-      ## Compute Weir and Cockrham estimates of F-statistics - FIS and FST
-      data <- as.data.frame(as.loci(mydata_genind_a))
-      result_f_stats <- Fst(as.loci(data)) # pegas
-      colnames(result_f_stats) <- c("Fit (W&C)", "Fst (W&C)", "Fis (W&C)")
-      ## compute the Gstats
-      df_resutl_basic <- df_resutl_basic %>% mutate("GST" = 1 - Hs / Ht)
-      df_resutl_basic <- df_resutl_basic %>% mutate("GST''" = (n_pop * (Ht - Hs)) / ((n_pop * Hs - Ht) * (1 - Hs)))
-      ## formatting the output table
-      result_stats <- merge(result_f_stats, df_resutl_basic, by = "row.names", all.x = TRUE)
-      colnames(result_stats)[11] <- "Fst (Nei)"
-      colnames(result_stats)[13] <- "Fis (Nei)"
-      # result_stats <- result_stats %>%
-      #   column_to_rownames(., var = "Row.names") %>%
-      #   rownames_to_column(var = "Markers")
-      result_stats <- result_stats %>% column_to_rownames(var = "Row.names")
-      result_stats_reactive(result_stats)
-      #### Convert logical vector to character vector of column names
-      selected_columns <- c(names(selected_stats)[selected_stats])
-      result_stats_select <- result_stats %>% select(all_of(selected_columns))
-      #  render the result
-      output$basic_stats_result <- renderTable({
-        req(result_stats_select)
-        return(result_stats_select)
-      })
-      # Downloadable csv of selected dataset ----
-      output$download_gstats_csv <- downloadHandler(
-        filename = function() {
-          paste("basic_stats_result", ".csv", sep = "")
-        },
-        content = function(file) {
-          write.csv(result_stats_select, file, row.names = TRUE)
-        }
-      )
-    }
-  })
 
+    # Check if any statistics are selected
+    if (!any(selected_stats)) {
+      # Show a shinyalert message if no statistics are selected
+      shinyalert(
+        title = "No Statistics Selected",
+        text = "Please select at least one statistic to compute.",
+        type = "warning"
+      )
+
+      # Stop execution of the rest of the code
+      return(NULL)
+    }
+
+    # Compute Nei diversity
+    result <- basic.stats(mydata_hierfstat_a) # hierfstat
+    df_resutl_basic <- as.data.frame(result$perloc)
+
+    # Compute Weir and Cockrham estimates of F-statistics - FIS and FST
+    data <- as.data.frame(as.loci(mydata_genind_a))
+    result_f_stats <- Fst(as.loci(data)) # pegas
+    colnames(result_f_stats) <- c("Fit (W&C)", "Fst (W&C)", "Fis (W&C)")
+
+    # Compute the Gstats
+    df_resutl_basic <- df_resutl_basic %>% mutate(
+      GST = 1 - Hs / Ht,
+      `GST''` = (n_pop * (Ht - Hs)) / ((n_pop * Hs - Ht) * (1 - Hs))
+    )
+
+    # Merge the stats and formatting the output table
+    result_stats <- merge(result_f_stats, df_resutl_basic, by = "row.names", all.x = TRUE)
+    colnames(result_stats)[11:12] <- c("Fst (Nei)", "Fis (Nei)")
+    rownames(result_stats) <- result_stats[, 1]
+    result_stats <- result_stats[, -1]
+    result_stats_reactive(result_stats)
+
+    # Select the required columns
+    result_stats_select <- result_stats[, names(selected_stats)[selected_stats], drop = FALSE]
+
+    # Render the result
+    output$basic_stats_result <- renderTable({
+      req(result_stats_select)
+      result_stats_select
+    })
+
+    # Downloadable csv of selected dataset
+    output$download_gstats_csv <- downloadHandler(
+      filename = function() {
+        paste("basic_stats_result", ".csv", sep = "")
+      },
+      content = function(file) {
+        write.csv(result_stats_select, file, row.names = TRUE)
+      }
+    )
+  })
   # Function to handle the plot generation
   observeEvent(input$run_plot_heatmap, {
     # Retrieve reactive value
     filtered_data_indv <- filtered_data_reac()
     missing_data <- missing_data_reac()
 
-
-    ### heatmap
-    # plot_missing_data <- heatmaply((missing_data),
-    #                                dendrogram = "none",
-    #                                xlab = "", ylab = "",
-    #                                main = "Heatmap of the missing data in the dataset.",
-    #                                scale = "none",
-    #                                margins = c(60,100,40,20),
-    #                                grid_color = "white",
-    #                                grid_width = 0.00001,
-    #                                titleX = FALSE,
-    #                                hide_colorbar = FALSE,
-    #                                branches_lwd = 0.1,
-    #                                label_names = c("Population", "Marker", "Percentage of missing data"), # nolint: line_length_linter.
-    #                                fontsize_row = 8, fontsize_col = 8,
-    #                                labCol = colnames(missing_data),
-    #                                labRow = rownames(missing_data),
-    #                                heatmap_layers = theme(axis.line=element_blank()),
-    #                                colorbar_lab = "Percentages")
-    # heatmaply does not print on the shiny app find a new solution
-
     # Data shaping
     missing_data <- rownames_to_column(missing_data, var = "location")
+
     ## Melt the data for ggplot2
     heatmap_data_melted <- melt(missing_data, value.name = "location")
     colnames(heatmap_data_melted) <- c("location", "marker", "percent")
+
     # Generate the heatmap plot
+    heatmap_missing <- ggplot(data = heatmap_data_melted, aes(x = location, y = marker, fill = percent)) +
+      geom_tile() +
+      labs(x = "Column Names", y = "Row Names", fill = "Value") +
+      theme(axis.text.x = element_text(angle = 90, hjust = 1)) # Rotate x-axis labels for better visibility
+
     output$plot_output <- renderPlot({
-      ggplot(data = heatmap_data_melted, aes(x = location, y = marker, fill = percent)) +
-        geom_tile() +
-        labs(x = "Column Names", y = "Row Names", fill = "Value") +
-        theme(axis.text.x = element_text(angle = 90, hjust = 1)) # Rotate x-axis labels for better visibility
+      heatmap_missing
     })
+
     # Downloadable png of the selected plot ----
     output$download_plot_png <- downloadHandler(
       filename = function() {
-        paste("plot_output", ".png", sep = "")
+        "plot_heatmap_missing.png"
       },
       content = function(file) {
-        ggsave(filename = file, plot = plot_output, dpi = 300)
+        ggsave(filename = file, plot = heatmap_missing, dpi = 300)
       }
     )
   })
+
   # Function to handle the plot generation for GST
   observeEvent(input$run_plot_GST, {
     # Retrieve reactive values
     result_stats <- result_stats_reactive()
-    # Generate the GST plot
+
+    # Generate the GST plot with linear trend
+    plot_GST <- ggplot(data = result_stats, aes(x = GST, y = Hs)) +
+      geom_point() +
+      geom_smooth(method = lm, color = "red", se = FALSE) +
+      theme_ipsum()
+
     output$plot_output <- renderPlot({
-      ## Plot GST with linear trend
-      ggplot(data = result_stats, aes(x = GST, y = Hs)) +
-        geom_point() +
-        geom_smooth(method = lm, color = "red", se = FALSE) +
-        theme_ipsum()
+      plot_GST
     })
+
     # Downloadable png of the selected plot ----
     output$download_plot_png <- downloadHandler(
       filename = function() {
-        paste("plot_output", ".png", sep = "")
+        "plot_GST.png"
       },
       content = function(file) {
-        ggsave(filename = file, plot = plot_output, dpi = 300)
+        ggsave(filename = file, plot = plot_GST, dpi = 300)
       }
     )
   })
@@ -198,35 +200,37 @@ server_general_stats <- function(input, output, session) {
   observeEvent(input$run_plot_FIS, {
     # Retrieve reactive values
     result_stats <- result_stats_reactive()
-    result_stats <- result_stats %>% rownames_to_column(var = "Markers")
     missing_data <- missing_data_reac()
+
     # Data formatting
+    result_stats <- result_stats %>% rownames_to_column(var = "Markers")
     fis <- as.data.frame(result_stats) %>% select("Fis (W&C)", "Markers")
     fis <- column_to_rownames(fis, var = "Markers")
     missing_data_transposed <- t(as.data.frame(missing_data))
     missing_data_transposed_total <- as.data.frame(missing_data_transposed) %>% select("Total")
-
     missing_data_transposed_total <- subset(missing_data_transposed_total, !rownames(missing_data_transposed_total) %in% "Mean")
     colnames(missing_data_transposed_total) <- ("Missing %")
     fis_missing_merged <- merge(fis, missing_data_transposed_total, by = "row.names", all.x = TRUE) %>% column_to_rownames("Row.names")
 
     # Generate the FIS plot and store it in plot_output
-    plot_output$plot <- ggplot(fis_missing_merged, aes(x = `Missing %`, y = `Fis (W&C)`)) +
+    plot_FIS <- ggplot(fis_missing_merged, aes(x = `Missing %`, y = `Fis (W&C)`)) +
       geom_point() +
       theme_ipsum() +
       scale_x_continuous(labels = scales::number_format(accuracy = 0.01)) +
       geom_smooth(method = "lm", se = FALSE, color = "red")
+
     # Define the output$plot_output to render the plot
     output$plot_output <- renderPlot({
-      plot_output$plot
+      plot_FIS
     })
+    print(plot_FIS)
     # Downloadable png of the selected plot ----
     output$download_plot_png <- downloadHandler(
       filename = function() {
-        paste("plot_output", ".png", sep = "")
+        "plot_FIS.png"
       },
       content = function(file) {
-        ggsave(filename = file, plot = plot_output$plot, dpi = 300)
+        ggsave(filename = file, plot = plot_FIS, dpi = 300)
       }
     )
   })
