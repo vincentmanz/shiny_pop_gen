@@ -2,7 +2,7 @@
 ################################################################################
 # environment variables
 
-filtered_data <- read.csv("/media/vincent/vincent/dev/parasiteR/data/data-2023-09-11 (2).csv", header = TRUE)
+filtered_data <- read.csv("~/projects/shiny_pop_gen/shiny_pop_gen/data/data-2023-09-11 (2).csv", header = TRUE)
 
 # information inherited from previous page
 n_marker <- 6
@@ -32,17 +32,17 @@ n_rep <- 1000
 ################################################################################
 # Define the server logic
 server_general_stats <- function(input, output, session) {
-  # Create a reactive value to store the output of the general stats
+  # General stats reactive value
   result_stats_reactive <- reactiveVal(NULL)
   # Missing data reactive value
   missing_data_reac <- reactiveVal(NULL)
   # Filtered data formated
   filtered_data_reac <- reactiveVal(NULL)
-  # Define a reactiveValues object to store the plot
+  # store the plot reactive values
   plot_output <- reactiveValues()
-  # Define a reactiveValues object to store mydata_genind
+  # mydata_genind reactive value
   mydata_genind_reac <- reactiveVal(NULL)
-  # Define a reactiveValues object to store mydata_hierfstat
+  # mydata_hierfstat reactive value
   mydata_hierfstat_reac <- reactiveVal(NULL)
 
   ## Create genind object
@@ -53,7 +53,7 @@ server_general_stats <- function(input, output, session) {
   mydata_genind_reac(mydata_genind)
   # Compute hierfstat object
   mydata_hierfstat <- genind2hierfstat(mydata_genind)
-  mydata_hierfstat_reac(mydata_hierfstat_reac)
+  mydata_hierfstat_reac(mydata_hierfstat)
   # create the missing df
   mydata_genind <- df2genind(X = filtered_data[, column_genotype_start:column_genotype_end], sep = "/", ncode = 6, ind.names = filtered_data$indv, pop = filtered_data$Population, NA.char = "0/0", ploidy = 2, type = "codom", strata = NULL, hierarchy = NULL)
   missing_data <- info_table(mydata_genind, plot = FALSE, percent = TRUE, df = TRUE)
@@ -65,12 +65,8 @@ server_general_stats <- function(input, output, session) {
   # Function to run the basic.stats and render the result
   observeEvent(input$run_basic_stats, {
     # Retrieve reactive value
-mydata_hierfstat_a <- mydata_hierfstat_reac()
+    mydata_hierfstat_a <- mydata_hierfstat_reac()
     mydata_genind_a <- mydata_genind_reac()
-      print("aa")
-#print(mydata_hierfstat_a)
-          print("start")
-#print(mydata_genind_a)
 
     # Retrieve the stats selected values
     selected_stats <- c(
@@ -88,20 +84,15 @@ mydata_hierfstat_a <- mydata_hierfstat_reac()
     # Create the df stats selected
     if (length(selected_stats) > 0) {
       ## Compute Nei diversity
-      print("1")
       result <- basic.stats(mydata_hierfstat_a) # hierfstat
-      print("2")
       df_resutl_basic <- as.data.frame(result$perloc)
-      print("A")
       ## Compute Weir and Cockrham estimates of F-statistics - FIS and FST
       data <- as.data.frame(as.loci(mydata_genind_a))
       result_f_stats <- Fst(as.loci(data)) # pegas
       colnames(result_f_stats) <- c("Fit (W&C)", "Fst (W&C)", "Fis (W&C)")
-      print("B")
       ## compute the Gstats
       df_resutl_basic <- df_resutl_basic %>% mutate("GST" = 1 - Hs / Ht)
       df_resutl_basic <- df_resutl_basic %>% mutate("GST''" = (n_pop * (Ht - Hs)) / ((n_pop * Hs - Ht) * (1 - Hs)))
-      print("B")
       ## formatting the output table
       result_stats <- merge(result_f_stats, df_resutl_basic, by = "row.names", all.x = TRUE)
       colnames(result_stats)[11] <- "Fst (Nei)"
@@ -111,7 +102,6 @@ mydata_hierfstat_a <- mydata_hierfstat_reac()
       #   rownames_to_column(var = "Markers")
       result_stats <- result_stats %>% column_to_rownames(var = "Row.names")
       result_stats_reactive(result_stats)
-      print(C)
       #### Convert logical vector to character vector of column names
       selected_columns <- c(names(selected_stats)[selected_stats])
       result_stats_select <- result_stats %>% select(all_of(selected_columns))
@@ -210,22 +200,15 @@ mydata_hierfstat_a <- mydata_hierfstat_reac()
     result_stats <- result_stats_reactive()
     result_stats <- result_stats %>% rownames_to_column(var = "Markers")
     missing_data <- missing_data_reac()
-    print(head(missing_data))
     # Data formatting
     fis <- as.data.frame(result_stats) %>% select("Fis (W&C)", "Markers")
     fis <- column_to_rownames(fis, var = "Markers")
-    print("A")
     missing_data_transposed <- t(as.data.frame(missing_data))
-    print(head(missing_data_transposed))
-    print("A1")
     missing_data_transposed_total <- as.data.frame(missing_data_transposed) %>% select("Total")
-    print(head(missing_data_transposed_total))
-    print("B")
 
     missing_data_transposed_total <- subset(missing_data_transposed_total, !rownames(missing_data_transposed_total) %in% "Mean")
     colnames(missing_data_transposed_total) <- ("Missing %")
     fis_missing_merged <- merge(fis, missing_data_transposed_total, by = "row.names", all.x = TRUE) %>% column_to_rownames("Row.names")
-    print("C")
 
     # Generate the FIS plot and store it in plot_output
     plot_output$plot <- ggplot(fis_missing_merged, aes(x = `Missing %`, y = `Fis (W&C)`)) +
