@@ -279,9 +279,15 @@ server_general_stats <- function(input, output, session) {
       return(results_mat)
     }
 
-    # Create a new progress bar
-    waitress <- Waitress$new("#run_panmixia", theme = "overlay-percent", infinite = TRUE)
-    waitress$start()
+    # Start the waiter
+    w <- waiter::Waiter$new(id = "run_panmixia")
+    hostess <- waiter::Hostess$new(min = 0, max = n_rep)
+    HOT <- hostess$get_loader(  # Use the hostess object here
+      progress_type = "bubble",
+      bubble_color = "#1212d1"
+    )
+    # Show the waiter
+    w$show(HOT)  # Pass the HOT object to the show method
 
     # Perform bootstrapping with stratification
     boot_mat_strat <- boot(
@@ -304,6 +310,14 @@ server_general_stats <- function(input, output, session) {
       req(boot_mat_strat_CI)
       return(boot_mat_strat_CI)
     })
+    # Hide the waiter
+    on.exit({
+      w$hide()
+    })
+
+    print(boot_mat_strat_CI)
+
+    
     # Downloadable csv of selected dataset
     output$download_panmixia_csv <- downloadHandler(
       filename = function() {
@@ -313,8 +327,6 @@ server_general_stats <- function(input, output, session) {
         write.csv(boot_mat_strat_CI, file, row.names = TRUE)
       }
     )
-    # Hide the waiter
-    waitress$close()
 
     # Reset rownames as a column in the data frame
     boot_mat_strat_CI$Marker <- rownames(boot_mat_strat_CI)
