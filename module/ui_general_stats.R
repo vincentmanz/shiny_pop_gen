@@ -2,6 +2,7 @@
 
 general_stats_UI <- function() {
   fluidPage(
+    use_waitress(),
     fluidRow(
       box(
         width = 2,
@@ -20,7 +21,7 @@ general_stats_UI <- function() {
         checkboxInput("GST_checkbox", "GST", FALSE),
         checkboxInput("GST_sec_checkbox", "GST''", FALSE),
         tags$hr(),
-        actionButton("run_basic_stats", "Run")
+        actionButton("run_basic_stats", "Run", icon = icon("rocket"))
       ),
       box(
         width = 10,
@@ -70,26 +71,37 @@ general_stats_UI <- function() {
     ),
     fluidRow(
       box(
+        use_waitress(),
         width = 4,
         title = "Panmixia",
         status = "primary",
         solidHeader = TRUE,
         numericInput("numboot", "Number of bootstrap replicates", value = 1000, max = 10000),
         textInput("level1", "Population unit", value = "Population"),
-        actionButton("run_panmixia", "Run")
+        actionButton("run_panmixia", "Run", icon = icon("rocket"))
+      ),
+      box(
+        width = 8,
+        title = "Panmixia tabulation",
+        status = "primary",
+        solidHeader = TRUE,
+        ## DOWNLOAD
+        downloadButton("download_panmixia_csv", "Download CSV"),
+        # Display the plot
+        tableOutput("panmixia_boot_result")
       )
     ),
-    # fluidRow(
-    #   box(
-    #     width = 12,
-    #     title = "Panmixia Plot",
-    #     status = "primary",
-    #     solidHeader = TRUE,
-    #     ## DOWNLOAD
-    #     downloadButton("download_missing_data", ""),
-    #     # Display the plot
-    #     plotOutput("plot_boot")
-    #   )
-    # )
+    fluidRow(
+      box(
+        width = 12,
+        title = "Plot Panmixia",
+        status = "primary",
+        solidHeader = TRUE,
+        ## DOWNLOAD
+        downloadButton("download_panmixia_boot_plot", "Download png"),
+        # Display the plot using the reactive expression
+        plotOutput("panmixia_boot_plot")
+      )
+    )
   )
 }

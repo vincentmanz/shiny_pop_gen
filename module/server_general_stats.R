@@ -1,16 +1,17 @@
 # server_general_stats.R
 ################################################################################
 # to do list:
-  # - add level1 as a reactive value
-  # - add a dropdown menu to select the level1
-  # - in the ui a tableOutput for the bootstrapping result
-  # - in the ui a plotOutput for the bootstrapping result
-
-  # - the environment variable reactive between all the modules
+# - add level1 as a reactive value
+# - add a dropdown menu to select the level1
+# - make a progression calculation window for the bootstrap
+# - the environment variable reactive between all the modules
+# - zoom in the plot: https://stackoverflow.com/questions/76591841/expand-plotly-output-in-quarto-html-document-to-full-screen
+#  plot_ly(x = diamonds$cut) |>
+#  bslib::card(full_screen = TRUE)
 ################################################################################
 # environment variables
 
-filtered_data <- read.csv("~/projects/shiny_pop_gen/shiny_pop_gen/data/data-2023-09-11 (2).csv", header = TRUE)
+filtered_data <- read.csv("/home/vincent/Documents/project/shiny_app/dev/shiny_pop_gen/data/data-2023-09-11 (2).csv", header = TRUE)
 
 # information inherited from previous page
 n_marker <- 6
@@ -70,7 +71,7 @@ server_general_stats <- function(input, output, session) {
   missing_data <- missing_data * 100
   missing_data_reac(missing_data)
 
-  # Function to run the basic.stats and render the result
+  # Observe Event for Running the basic.stats and render the results
   observeEvent(input$run_basic_stats, {
     # Retrieve reactive value
     mydata_hierfstat_a <- mydata_hierfstat_reac()
@@ -144,7 +145,7 @@ server_general_stats <- function(input, output, session) {
       }
     )
   })
-  # Function to handle the plot generation
+  # Observe Event for handling the plot generation
   observeEvent(input$run_plot_heatmap, {
     # Retrieve reactive value
     filtered_data_indv <- filtered_data_reac()
@@ -178,7 +179,7 @@ server_general_stats <- function(input, output, session) {
     )
   })
 
-  # Function to handle the plot generation for GST
+  # Observe Event for handling the plot generation for GST
   observeEvent(input$run_plot_GST, {
     # Retrieve reactive values
     result_stats <- result_stats_reactive()
@@ -204,7 +205,7 @@ server_general_stats <- function(input, output, session) {
     )
   })
 
-  # Function to handle the plot generation for FIS
+  # Observe Event for handling the plot generation for FIS
   observeEvent(input$run_plot_FIS, {
     # Retrieve reactive values
     result_stats <- result_stats_reactive()
@@ -231,7 +232,6 @@ server_general_stats <- function(input, output, session) {
     output$plot_output <- renderPlot({
       plot_FIS
     })
-    print(plot_FIS)
     # Downloadable png of the selected plot ----
     output$download_plot_png <- downloadHandler(
       filename = function() {
@@ -243,15 +243,18 @@ server_general_stats <- function(input, output, session) {
     )
   })
 
+  # Observe Event for Running Panmixia Analysis
   observeEvent(input$run_panmixia, {
     # retrieve reactive values
     result_stats <- result_stats_reactive()
     filtered_data_indv <- filtered_data_reac()
     # Access the input values
     n_rep <- input$numboot
+
     ###########################
     level1 <- input$level1 # change the level to be reactive and put a dropdown menu to select from the filtered_data_indv
     ##########################
+
     # bootstrap over level1, Columns to include in the botraping
     columns_to_fstat <- colnames(filtered_data_indv[, marker_start:marker_end])
 
@@ -275,7 +278,11 @@ server_general_stats <- function(input, output, session) {
         as.matrix()
       return(results_mat)
     }
-    print("Starting bootstrapping...")
+
+    # Create a new progress bar
+    waitress <- Waitress$new("#run_panmixia", theme = "overlay-percent", infinite = TRUE)
+    waitress$start()
+
     # Perform bootstrapping with stratification
     boot_mat_strat <- boot(
       sim = "ordinary",
@@ -285,7 +292,7 @@ server_general_stats <- function(input, output, session) {
       strata = as.numeric(as.factor(filtered_data_indv$Population)),
       columns = columns_to_fstat,
       parallel = "multicore",
-      ncpus = num_cores
+      ncpus = num_cores,
     )
 
     # format the bootstrap results
@@ -293,24 +300,46 @@ server_general_stats <- function(input, output, session) {
     boot_mat_strat_CI <- as.data.frame(boot_mat_strat_CI)
     rownames(boot_mat_strat_CI) <- columns_to_fstat
     #  render the result
-    output$basic_bbot_result <- renderTable({
+    output$panmixia_boot_result <- renderTable({
       req(boot_mat_strat_CI)
       return(boot_mat_strat_CI)
     })
-    print("Done.")
-    print(boot_mat_strat_CI)
+    # Downloadable csv of selected dataset
+    output$download_panmixia_csv <- downloadHandler(
+      filename = function() {
+        paste("panmixia_stats_result", ".csv", sep = "")
+      },
+      content = function(file) {
+        write.csv(boot_mat_strat_CI, file, row.names = TRUE)
+      }
+    )
+    # Hide the waiter
+    waitress$close()
+
     # Reset rownames as a column in the data frame
     boot_mat_strat_CI$Marker <- rownames(boot_mat_strat_CI)
     # Convert Sample to a factor (assuming it contains unique values)
     boot_mat_strat_CI$Marker <- as.factor(boot_mat_strat_CI$Marker)
-    output$plot_boot <- renderPlot({
-      boot_mat_strat_CI %>%
-        ggplot(aes(x = Marker, y = statistic)) +
-        geom_point() +
-        geom_errorbar(aes(ymin = as.numeric(conf.low), ymax = as.numeric(conf.high)), width = 0.2, position = position_dodge(0.05)) + # nolint: line_length_linter.
-        xlab("Loci") +
-        ylab("Fis (W&C)")
-      return(boot_mat_strat_CI)
+
+    panmixia_plot <- boot_mat_strat_CI %>%
+      ggplot(aes(x = Marker, y = statistic)) +
+      geom_point() +
+      geom_errorbar(aes(ymin = as.numeric(conf.low), ymax = as.numeric(conf.high)), width = 0.2, position = position_dodge(0.05)) + # nolint: line_length_linter.
+      xlab("Loci") +
+      ylab("Fis (W&C)")
+    #  render the result
+    output$panmixia_boot_plot <- renderPlot({
+      req(panmixia_plot)
+      return(panmixia_plot)
     })
+    # Downloadable csv of selected dataset
+    output$download_panmixia_boot_plot <- downloadHandler(
+      filename = function() {
+        "panmixia_plot.png"
+      },
+      content = function(file) {
+        ggsave(filename = file, plot = panmixia_plot, dpi = 300)
+      }
+    )
   })
 }

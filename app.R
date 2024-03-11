@@ -1,31 +1,33 @@
 # app.R
+suppressPackageStartupMessages({
+  # Interface
+  library(shiny)
+  library(shinydashboard)
+  library(shinydashboardPlus)
+  library(shinyalert)
+  library(waiter)
 
-# Interface
-library(shiny)
-library(shinydashboard)
-library(shinydashboardPlus)
-library(shinyalert)
+  # data manipulation
+  library(tidyverse)
+  library(tidyr)
+  library(dplyr)
+  library(broom)
+  library(reshape2)
 
-# data manipulation
-library(tidyverse)
-library(tidyr)
-library(dplyr)
-library(broom)
-library(reshape2)
+  # population genomics
+  library(hierfstat)
+  library(adegenet)
+  library(pegas)
+  library(poppr)
+  library(boot)
 
-# population genomics
-library(hierfstat)
-library(adegenet)
-library(pegas)
-library(poppr)
-library(boot)
-
-# themes and graphics
-library(hrbrthemes)
-library(leaflet)
-library(plotly)
-library(kableExtra)
-library(ggplot2)
+  # themes and graphics
+  library(hrbrthemes)
+  library(leaflet)
+  library(plotly)
+  library(kableExtra)
+  library(ggplot2)
+})
 
 # Source server and UI files
 source("module/server_import_data.R")
