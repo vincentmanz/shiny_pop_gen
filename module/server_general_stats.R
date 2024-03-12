@@ -57,12 +57,15 @@ server_general_stats <- function(input, output, session) {
   ## Create genind object
   filtered_data <- data.frame(indv = paste(substr(filtered_data$Population, 1, 3), row.names(filtered_data), sep = "."), filtered_data)
   filtered_data_reac(filtered_data)
+
   # Compute genind object
   mydata_genind <- df2genind(X = filtered_data[, column_genotype_start:column_genotype_end], sep = "/", ncode = 6, ind.names = filtered_data$indv, pop = filtered_data$Population, NA.char = "NA", ploidy = 2, type = "codom", strata = NULL, hierarchy = NULL) # nolint: line_length_linter.
   mydata_genind_reac(mydata_genind)
+
   # Compute hierfstat object
   mydata_hierfstat <- genind2hierfstat(mydata_genind)
   mydata_hierfstat_reac(mydata_hierfstat)
+
   # create the missing df
   mydata_genind <- df2genind(X = filtered_data[, column_genotype_start:column_genotype_end], sep = "/", ncode = 6, ind.names = filtered_data$indv, pop = filtered_data$Population, NA.char = "0/0", ploidy = 2, type = "codom", strata = NULL, hierarchy = NULL)
   missing_data <- info_table(mydata_genind, plot = FALSE, percent = TRUE, df = TRUE)
@@ -248,9 +251,9 @@ server_general_stats <- function(input, output, session) {
     # retrieve reactive values
     result_stats <- result_stats_reactive()
     filtered_data_indv <- filtered_data_reac()
+
     # Access the input values
     n_rep <- input$numboot
-
     ###########################
     level1 <- input$level1 # change the level to be reactive and put a dropdown menu to select from the filtered_data_indv
     ##########################
@@ -258,36 +261,18 @@ server_general_stats <- function(input, output, session) {
     # bootstrap over level1, Columns to include in the botraping
     columns_to_fstat <- colnames(filtered_data_indv[, marker_start:marker_end])
 
-    boot_fonction <- function(data, indices, columns) {
-      subset_data <- as.data.frame(data[indices, columns, drop = FALSE])
-      subset_data <- adegenet::df2genind(
-        X = as.matrix(subset_data),
-        sep = "/",
-        ncode = 6,
-        ind.names = filtered_data_indv$indv,
-        pop = filtered_data_indv$Population,
-        NA.char = "0/0",
-        ploidy = 2,
-        type = "codom",
-        strata = NULL,
-        hierarchy = NULL
-      )
-      fst_results <- as.data.frame(pegas::Fst(pegas::as.loci(subset_data)))
-      results_mat <- fst_results %>%
-        select(Fis) %>%
-        as.matrix()
-      return(results_mat)
-    }
-
     # Start the waiter
-    w <- waiter::Waiter$new(id = "run_panmixia")
-    hostess <- waiter::Hostess$new(min = 0, max = n_rep)
-    HOT <- hostess$get_loader(  # Use the hostess object here
-      progress_type = "bubble",
-      bubble_color = "#1212d1"
-    )
-    # Show the waiter
-    w$show(HOT)  # Pass the HOT object to the show method
+    # waiter_show(
+    #   hostess_loader("myHostess", preset = "bubble"),
+    #   id = "Panmixia", # specify id of plot to overlay
+    #   color = "white"
+    # )
+    waiter_show(html = spin_flowers(), color = "rgba(245, 40, 145, 0.2)")
+
+
+    # hostess <- Hostess$new("myHostess", infinite = TRUE, min = 0, max = 100)
+    # hostess$print()
+    # hostess$start()
 
     # Perform bootstrapping with stratification
     boot_mat_strat <- boot(
@@ -305,19 +290,13 @@ server_general_stats <- function(input, output, session) {
     boot_mat_strat_CI <- tidy(boot_mat_strat, conf.int = TRUE, conf.method = "perc") # nolint: line_length_linter, object_name_linter.
     boot_mat_strat_CI <- as.data.frame(boot_mat_strat_CI)
     rownames(boot_mat_strat_CI) <- columns_to_fstat
+
     #  render the result
     output$panmixia_boot_result <- renderTable({
       req(boot_mat_strat_CI)
       return(boot_mat_strat_CI)
     })
-    # Hide the waiter
-    on.exit({
-      w$hide()
-    })
 
-    print(boot_mat_strat_CI)
-
-    
     # Downloadable csv of selected dataset
     output$download_panmixia_csv <- downloadHandler(
       filename = function() {
@@ -330,6 +309,7 @@ server_general_stats <- function(input, output, session) {
 
     # Reset rownames as a column in the data frame
     boot_mat_strat_CI$Marker <- rownames(boot_mat_strat_CI)
+
     # Convert Sample to a factor (assuming it contains unique values)
     boot_mat_strat_CI$Marker <- as.factor(boot_mat_strat_CI$Marker)
 
@@ -339,11 +319,13 @@ server_general_stats <- function(input, output, session) {
       geom_errorbar(aes(ymin = as.numeric(conf.low), ymax = as.numeric(conf.high)), width = 0.2, position = position_dodge(0.05)) + # nolint: line_length_linter.
       xlab("Loci") +
       ylab("Fis (W&C)")
+
     #  render the result
     output$panmixia_boot_plot <- renderPlot({
       req(panmixia_plot)
       return(panmixia_plot)
     })
+
     # Downloadable csv of selected dataset
     output$download_panmixia_boot_plot <- downloadHandler(
       filename = function() {
@@ -353,5 +335,10 @@ server_general_stats <- function(input, output, session) {
         ggsave(filename = file, plot = panmixia_plot, dpi = 300)
       }
     )
+
+    # Hide the waiter
+    # hostess$close()
+    # waiter_hide_on_render(id = "Panmixia")
+    waiter_hide()
   })
 }

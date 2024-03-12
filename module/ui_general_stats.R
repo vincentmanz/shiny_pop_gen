@@ -3,7 +3,7 @@
 general_stats_UI <- function() {
   fluidPage(
     useWaiter(),
-    useHostess(),
+    #use_hostess(),
     fluidRow(
       box(
         width = 2,
@@ -78,7 +78,7 @@ general_stats_UI <- function() {
         solidHeader = TRUE,
         numericInput("numboot", "Number of bootstrap replicates", value = 1000, max = 10000),
         textInput("level1", "Population unit", value = "Population"),
-        triggerWaiter(actionButton("run_panmixia", "Run", icon = icon("rocket")))
+        actionButton("run_panmixia", "Run", icon = icon("rocket"))
       ),
       box(
         width = 8,
