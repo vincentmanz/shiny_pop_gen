@@ -2,7 +2,8 @@
 
 general_stats_UI <- function() {
   fluidPage(
-    use_waitress(),
+    useWaiter(),
+    #use_hostess(),
     fluidRow(
       box(
         width = 2,
@@ -71,7 +72,6 @@ general_stats_UI <- function() {
     ),
     fluidRow(
       box(
-        use_waitress(),
         width = 4,
         title = "Panmixia",
         status = "primary",
