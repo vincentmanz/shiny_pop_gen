@@ -1,0 +1,71 @@
+bootstrap sur FIS sur les individus ticques (shuffle the individuals at different levels)
+
+bootstrap sur FST sur les sous-echgantillons (echantillonnage avec remise des niveaux fermes, regions)
+! minium 5 sous-niveaux
+boostrap entre les vachesm reechantillon les iles entre elles=le block d'individus. 
+boostrap entre fermes
+note ne pas enlever le boostrap sur les individus
+
+!bootstrap fst=0 
+
+bootstrap sur FIT sur les individus ticques sans tenir compte des population d'origines. 
+
+
+
+
+Tableau 
+
+pair de loci    Sous-echantillon_1 Sous-echantillon_1 
+loci 1.1           P1.1 (proportion de fois que G simule est plus grand que G observe)
+loci 1.2
+loci 1.3  
+
+
+
+P1.1 = G randomisation genotype et calcul de G pour chaque paire de locus
+1. Table contingence locus 2 a 2, nombre de fois que l'on observe les genotypes 11 au locus 1 et 11 au locus 2  
+2. G observe = G pour la table de contingence
+3. G simule = G pour la table de contingence simulee
+4. P1.1 = proportion de fois que G simule est plus grand ou egal que G observer TableICC
+5. P-value global = sum of G simule >= G observe / nombre de fois que l'on a simule la table de contingence. 
+
+
+I neeed to make a table based on the file, the 'sous-echantillon' is the Population in the table, the locus are: B12	C07	D12	D10	A12	C03
+The locus pair will be: B12-C07 , B12-D12, .... 
+
+
+
+
+
+
+1. Calculate a contengency Table locus 2 a 2 = nombre de fois que l'on observe les genotypes 11 au locus 1 et 11 au locus 2  
+2. Calculate G observe = G pour la table de contingence
+3. Calculate G simule = G pour la table de contingence simulee = randomisation genotype et calcul de G pour chaque paire de locus pour chaque sous-echantillon
+4. pB12-C07-1 = proportion de fois que G simule est plus grand ou egal que G observe possible use of the package TableICC to calculate G, but find a better if necessary
+5. Calculate an extra column for the p-value global = sum of G simule >= G observe / nombre de fois que l'on a simule la table de contingence. The code should be in R.
+
+I need to keet all intermediary results
+
+End result: 
+
+pair de loci    Sous-echantillon_1  Sous-echantillon_2  .... Global
+Pair-loci B12-C07   pB12-C07-1  pB12-C07-2
+Pair-loci B12-D12   pB12-C07-1  pB12-C07-2
+...
+
+pB12-C07-1 = proportion de fois que G simule est plus grand que G observe pour le sous-echantillon_1. G randomisation genotype et calcul de G pour chaque paire de locus, 
+
+
+
+
+Create contingency tables for all locus pairs per "Sous-echantillon" (Population): Count the occurrence of genotypes (e.g., 11 vs. 11) for each pair of loci.
+
+Calculate GobserveGobserve​: Compute the observed G-statistic for each contingency table using the formula or a package like TableICC.
+
+Simulate GsimuleGsimule​: Randomize genotypes for loci, generate new contingency tables, and calculate GG for each simulation.
+
+Calculate pp-values: Determine the proportion of simulations where Gsimule≥GobserveGsimule​≥Gobserve​.
+
+Calculate the global pp-value: Aggregate simulations across all sub-samples.
+
+Keep intermediary results: Store contingency tables, GobserveGobserve​, GsimuleGsimule​, and pp-values.
