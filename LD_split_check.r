@@ -31,8 +31,6 @@
   loci <- c("H1", "H2", "H3", "H4")
   loci_pairs <- combn(loci, 2, simplify = FALSE)
 
-
-
   # Split the allele pairs into two numeric columns
   split_alleles <- function(column) {
     alleles <- strsplit(as.character(column), "/")
@@ -40,9 +38,7 @@
     allele2 <- as.numeric(sapply(alleles, `[`, 2))
     return(data.frame(allele1 = allele1, allele2 = allele2))
   }
-
-
-
+  
   # Function to split alleles and generate contingency tables for each population
   create_contingency_tables <- function(data, loci) {
     populations <- unique(data$Population)
@@ -102,25 +98,26 @@
   }
 
   # Add G-statistics to contingency tables
-  add_g_stats <- function(contingency_tables) {
-    lapply(contingency_tables, function(pop_tables) {
+add_g_stats <- function(contingency_tables) {
+  lapply(contingency_tables, function(pop_tables) {
+    # Rename locus pairs to ensure no special characters
+    sanitized_names <- make.names(names(pop_tables), unique = TRUE)
+    
+    setNames(
       lapply(names(pop_tables), function(pair_name) {
         contingency_table <- pop_tables[[pair_name]]
+        g_stat <- calculate_g_stat(contingency_table)
+        
         list(
-          pair = pair_name,  # Include pair name in the result
           contingency_table = contingency_table,
-          g_stat = calculate_g_stat(contingency_table)
+          expected_contingency_table = g_stat$expected,
+          g_stat = g_stat$g_stat
         )
-      })
-    })
-  }
-
-
-
-
-
-
-
+      }),
+      sanitized_names
+    )
+  })
+}
   # Randomize haplotypes within a population
   randomize_haplotypes_within_population <- function(pop_data, loci) {
     randomized_data <- pop_data
@@ -131,7 +128,7 @@
   }
 
   # Generate randomized G-statistics
-  generate_randomized_g_stats_parallel <- function(data, loci, n_simulations = 100) {
+  generate_randomized_g_stats_parallel <- function(data, loci, n_simulations = 1000) {
     populations <- unique(data$Population)
     
     # Set up parallel backend
@@ -214,4 +211,4 @@
   observed_g_stats <- add_g_stats(contingency_tables)
 
   # Step 3: Generate randomized G-stats
-  randomized_g_stats <- generate_randomized_g_stats_parallel(data, loci, n_simulations = 10)
+  randomized_g_stats <- generate_randomized_g_stats_parallel(data, loci, n_simulations = 1000)
