@@ -212,3 +212,43 @@ add_g_stats <- function(contingency_tables) {
 
   # Step 3: Generate randomized G-stats
   randomized_g_stats <- generate_randomized_g_stats_parallel(data, loci, n_simulations = 1000)
+
+
+# Make controls
+  # check contengcy tables for population 3 pair 1-2  
+    # Access the contingency table
+    contingency_table <- observed_g_stats$Population3$H1.H2$contingency_table
+    # Perform the Chi-squared test to get expected frequencies
+    chisq_result <- chisq.test(contingency_table, simulate.p.value = FALSE)
+    # Extract expected frequencies
+    expected <- chisq_result$expected
+
+  # check gstat function tables for population 3 pair 1-2  
+    library(vcd)
+    # Access the contingency table for Population 3, pair H1-H2
+    contingency_table <- observed_g_stats$Population3$H1.H2$contingency_table
+    # Perform assocstats on the contingency table
+    assoc_stats <- assocstats(as.table(contingency_table))
+    g_stat_assocstats <- assoc_stats$chisq_tests["Likelihood Ratio", "X^2"]
+    # Extract expected frequencies from assocstats
+    chisq_result <- chisq.test(contingency_table, simulate.p.value = FALSE)
+    expected_chisq <- chisq_result$expected
+    # Compare the expected frequencies from assocstats and chisq.test
+    g_stat_observed <- observed_g_stats$Population3$H1.H2$g_stat
+    expected_observed <- observed_g_stats$Population3$H1.H2$expected_contingency_table
+    # Print results
+    cat("Observed Contingency Table:\n")
+    print(contingency_table)
+    cat("\nExpected Frequencies (from chisq.test):\n")
+    print(expected_chisq)
+    cat("\nExpected Frequencies (from observed_g_stats):\n")
+    print(expected_observed)
+    cat("\nG-Statistic (from assocstats):", g_stat_assocstats, "\n")
+    cat("G-Statistic (from observed_g_stats):", g_stat_observed, "\n")
+
+    # Validate consistency  
+    if (abs(g_stat_assocstats - g_stat_observed) < 1e-6) {
+    cat("\nG-Statistics are consistent!\n")
+    } else {
+    cat("\nDiscrepancy detected in G-Statistics!\n")
+    }
