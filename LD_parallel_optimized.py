@@ -3,13 +3,24 @@ import pandas as pd
 from itertools import combinations
 from multiprocessing import Pool, cpu_count
 
-# Load the dataset
-data = pd.read_csv("data/data-2023-09-11 (2).csv")
+# Dataset
+data = pd.DataFrame({
+    'Individual': ['Ind1', 'Ind2', 'Ind3', 'Ind4', 'Ind5', 'Ind6', 'Ind7', 'Ind8', 'Ind9'],
+    'Population': ['Population1', 'Population1', 'Population1', 'Population2', 'Population2', 'Population2', 'Population3', 'Population3', 'Population3'],
+    'H1': ['120/165', '120/165', '120/165', '120/165', '120/170', '165/170', '121/164', '171/181', '167/174'],
+    'H2': ['120/165', '120/165', '120/165', '120/170', '120/165', '120/170', '122/169', '163/172', '175/186'],
+    'H3': ['120/165', '120/165', '120/165', '165/170', '165/170', '120/165', '166/168', '123/173', '125/190'],
+    'H4': ['120/165', '120/165', '120/165', '120/165', '120/170', '165/170', '177/179', '129/195', '124/199']
+})
 
-# Extract unique populations and loci
-populations = data['Population'].unique()
-loci = ["B12", "C07", "D12", "D10", "A12", "C03"]
+
+# Variables
+loci = ['H1', 'H2', 'H3', 'H4']
+n_simulations = 10000
 loci_pairs = list(combinations(loci, 2))
+n_workers = 64
+
+
 
 # Function to split alleles into two numeric columns
 def split_alleles(column):
@@ -168,12 +179,12 @@ def create_summary_table(pvalues, global_pvalues):
     return summary_table
 
 # Full Workflow
-contingency_tables = create_contingency_tables(data, loci)
-observed_g_stats = add_g_stats_to_population_tables(contingency_tables)
-randomized_g_stats = generate_randomized_g_stats_parallel(data, loci, loci_pairs, n_simulations=100)
-pvalues = calculate_pvalues(observed_g_stats, randomized_g_stats)
-global_pvalues = calculate_global_pvalues(observed_g_stats, randomized_g_stats)
-summary_table = create_summary_table(pvalues, global_pvalues)
+# contingency_tables = create_contingency_tables(data, loci)
+# observed_g_stats = add_g_stats_to_population_tables(contingency_tables)
+randomized_g_stats = generate_randomized_g_stats_parallel(data, loci, loci_pairs, n_simulations=10000)
+# pvalues = calculate_pvalues(observed_g_stats, randomized_g_stats)
+# global_pvalues = calculate_global_pvalues(observed_g_stats, randomized_g_stats)
+# summary_table = create_summary_table(pvalues, global_pvalues)
 
 # View the final summary table
 print(summary_table)

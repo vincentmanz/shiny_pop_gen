@@ -1,10 +1,11 @@
-  # Load necessary libraries
-  library(dplyr)
-  library(Rcpp)
-  library(hierfstat)
-  library(parallel)
-  library(foreach)
-  library(doParallel)
+# Load necessary libraries
+library(dplyr)
+library(Rcpp)
+library(hierfstat)
+library(parallel)
+library(foreach)
+library(doParallel)
+library(reticulate)
 
   # Load the dataset
   data <- data.frame(
@@ -20,6 +21,13 @@
 populations <- unique(data$Population)
 loci <- c("H1", "H2", "H3", "H4")
 loci_pairs <- combn(loci, 2, simplify = FALSE)
+n_simulations <- as.integer(10)
+workers <- 60
+# Convert R variables to Python
+py$data <- data
+py$loci <- loci
+py$n_simulations <- n_simulations
+py$workers <- workers
 
 # Split the allele pairs into two numeric columns
 split_alleles <- function(column) {
@@ -119,74 +127,145 @@ randomize_haplotypes_within_population <- function(pop_data, loci) {
 }
 
 # Generate randomized G-statistics
-generate_randomized_g_stats_parallel <- function(data, loci, n_simulations = 1000) {
-  populations <- unique(data$Population)
-  # Set up parallel backend
-  n_cores <- detectCores() - 1  # Leave one core free
-  cl <- makeCluster(n_cores)
-  registerDoParallel(cl)
-  # Export required variables and functions
-  clusterExport(cl, varlist = c(
-    "randomize_haplotypes_within_population", 
-    "create_contingency_tables", 
-    "split_alleles",  # Export split_alleles function
-    "data", 
-    "loci"
-  ), envir = environment())
-  # Compile the C++ function in each worker
-  clusterEvalQ(cl, {
-    library(Rcpp)
-    cppFunction('
-    double calculateGStatCpp(NumericMatrix obs) {
-        double g_stat = 0.0;
-        int nrow = obs.nrow(), ncol = obs.ncol();
-        double nt = 0.0;
-        for (int i = 0; i < nrow; ++i) {
-            for (int j = 0; j < ncol; ++j) {
-                nt += obs(i, j);
-            }
-        }
-        NumericVector row_sum(nrow), col_sum(ncol);
-        for (int i = 0; i < nrow; ++i) {
-            for (int j = 0; j < ncol; ++j) {
-                row_sum[i] += obs(i, j);
-                col_sum[j] += obs(i, j);
-            }
-        }
-        for (int i = 0; i < nrow; ++i) {
-            for (int j = 0; j < ncol; ++j) {
-                double expected = (row_sum[i] * col_sum[j]) / nt;
-                if (obs(i, j) > 0 && expected > 0) {
-                    g_stat += 2 * obs(i, j) * log(obs(i, j) / expected);
-                }
-            }
-        }
-        return g_stat;
-    }
-    ')
-  })
-  # Parallel computation
-  randomized_g_stats <- foreach(pop = populations, .combine = 'c', 
-                                .packages = c("dplyr")) %dopar% {
-    pop_data <- data[data$Population == pop, ]
-    locus_pairs <- combn(loci, 2, simplify = FALSE)
-    pop_results <- lapply(locus_pairs, function(pair) {
-      replicate(n_simulations, {
-        randomized_pop_data <- randomize_haplotypes_within_population(pop_data, loci)
-        contingency_tables <- create_contingency_tables(randomized_pop_data, loci)
-        contingency_table <- contingency_tables[[pop]][[paste(pair, collapse = "-")]]
-        calculateGStatCpp(as.matrix(contingency_table))
-      })
-    })
-    # Use a period (.) instead of a hyphen (-) for naming pairs
-    names(pop_results) <- paste0(sapply(locus_pairs, function(pair) pair[1]), ".", 
-                                  sapply(locus_pairs, function(pair) pair[2]))
-    list(pop = pop_results)
+
+# Function to check and set up Python environment
+setup_python_env <- function(env_name = "LD") {
+  # Check if the environment exists
+  if (!condaenv_exists(env_name)) {
+    cat("Environment", env_name, "does not exist. Creating it with mamba...\n")
+    
+    # Create the environment using mamba
+    system(paste("mamba create -n", env_name, "python=3.9 numpy pandas scipy concurrent.futures -y"))
+  } else {
+    cat("Environment", env_name, "already exists. Using it...\n")
   }
-  # Stop the cluster
-  stopCluster(cl)
-  names(randomized_g_stats) <- populations
-  return(randomized_g_stats)
+  
+  # Use the conda environment
+  use_condaenv(env_name, required = TRUE)
+  cat("Environment", env_name, "is set up and ready.\n")
+}
+
+# Call the function to set up and activate the LD environment
+setup_python_env("LD")
+
+# Run Python code in the LD environment
+py_run_string("
+import numpy as np
+import pandas as pd
+from scipy.stats import chi2_contingency
+from concurrent.futures import ProcessPoolExecutor
+
+# Example Python code
+print('Python environment is ready and operational.')
+")
+
+py_run_string("
+import pandas as pd
+import numpy as np
+from concurrent.futures import ProcessPoolExecutor
+
+# Split haplotypes into alleles
+def split_alleles(column):
+    alleles = column.str.split('/', expand=True)
+    return pd.concat([alleles[0].astype(int), alleles[1].astype(int)], axis=1)
+
+# Create contingency tables
+def create_contingency_tables(data, loci):
+    locus_pairs = [(loci[i], loci[j]) for i in range(len(loci)) for j in range(i + 1, len(loci))]
+    contingency_tables = {}
+    for pair in locus_pairs:
+        locus1_split = split_alleles(data[pair[0]])
+        locus2_split = split_alleles(data[pair[1]])
+        allele_data = pd.DataFrame({
+            'Locus1_allele': pd.concat([locus1_split[0], locus1_split[1]]),
+            'Locus2_allele': pd.concat([locus2_split[0], locus2_split[1]])
+        })
+        contingency_table = pd.crosstab(allele_data['Locus1_allele'], allele_data['Locus2_allele'])
+        contingency_tables[f'{pair[0]}.{pair[1]}'] = contingency_table
+    return contingency_tables
+
+# Compute G-statistic
+def calculate_g_stat(table):
+    total = table.values.sum()
+    row_sums = table.sum(axis=1).values
+    col_sums = table.sum(axis=0).values
+    expected = np.outer(row_sums, col_sums) / total
+    observed = table.values
+    non_zero = observed > 0  # Avoid log(0)
+    g_stat = 2 * np.sum(observed[non_zero] * np.log(observed[non_zero] / expected[non_zero]))
+    return g_stat
+
+# Randomize haplotypes within a population
+def randomize_haplotypes(data, loci):
+    randomized_data = data.copy()
+    for locus in loci:
+        randomized_data[locus] = np.random.permutation(data[locus])
+    return randomized_data
+
+# Simulate G-statistics for a single pair
+def simulate_one_pair(args):
+    pop_data, pair, loci, n_simulations = args
+    g_stats = []
+    for _ in range(n_simulations):
+        randomized_data = randomize_haplotypes(pop_data, loci)
+        locus1_split = split_alleles(randomized_data[pair[0]])
+        locus2_split = split_alleles(randomized_data[pair[1]])
+        randomized_allele_data = pd.DataFrame({
+            'Locus1_allele': pd.concat([locus1_split[0], locus1_split[1]]),
+            'Locus2_allele': pd.concat([locus2_split[0], locus2_split[1]])
+        })
+        randomized_table = pd.crosstab(randomized_allele_data['Locus1_allele'], randomized_allele_data['Locus2_allele'])
+        g_stats.append(calculate_g_stat(randomized_table))
+    return g_stats
+
+# Simulate randomized G-statistics in parallel for all locus pairs for each population
+def simulate_randomized_parallel(data, loci, n_simulations, n_workers):
+    populations = data['Population'].unique()
+    results = {}
+    for pop in populations:
+        pop_data = data[data['Population'] == pop].copy()
+        locus_pairs = [(loci[i], loci[j]) for i in range(len(loci)) for j in range(i + 1, len(loci))]
+        pop_results = {}
+        
+        # Run simulations in parallel for each pair
+        with ProcessPoolExecutor(max_workers=n_workers) as executor:
+            future_to_pair = {
+                executor.submit(simulate_one_pair, (pop_data, pair, loci, n_simulations)): pair
+                for pair in locus_pairs
+            }
+            for future in future_to_pair:
+                pair = future_to_pair[future]
+                pop_results[f'{pair[0]}.{pair[1]}'] = future.result()
+        
+        results[pop] = pop_results
+    return results
+
+# Run the simulation
+data = pd.DataFrame(r.data)
+loci = r.loci
+n_simulations = int(r.n_simulations)
+n_workers = int(r.workers)
+
+# Store G-statistics for each population
+simulated_stats = simulate_randomized_parallel(data, loci, n_simulations, n_workers)
+")
+
+
+
+
+# Function to flatten the nested list structure
+flatten_simulated_stats <- function(simulated_stats) {
+  flattened_stats <- list()
+  for (pop in names(simulated_stats)) {
+    pop_stats <- list()
+    for (pair in names(simulated_stats[[pop]])) {
+      # Flatten the list of individual simulations into a single vector
+      flattened_values <- unlist(simulated_stats[[pop]][[pair]])
+      pop_stats[[pair]] <- flattened_values
+    }
+    flattened_stats[[pop]] <- pop_stats
+  }
+  return(flattened_stats)
 }
 
 
@@ -274,7 +353,8 @@ observed_g_stats <- add_g_stats(contingency_tables)
 
 # Step 3: Generate randomized G-stats
 randomized_g_stats <- generate_randomized_g_stats_parallel(data, loci, n_simulations = 1000)
-
+randomized_g_stats_PY <- py$simulated_stats
+randomized_g_stats_PY <- flatten_simulated_stats(py$simulated_stats)
 # Step 4: Calculate p-values
 pvalues <- calculate_pvalues(observed_g_stats, randomized_g_stats)
 
