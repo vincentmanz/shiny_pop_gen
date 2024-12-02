@@ -14,13 +14,11 @@ data = pd.DataFrame({
     'H4': ['120/165', '120/165', '120/165', '120/165', '120/170', '165/170', '177/179', '129/195', '124/199']
 })
 
-
 # Variables
 loci = ['H1', 'H2', 'H3', 'H4']
 n_simulations = 10000
 loci_pairs = list(combinations(loci, 2))
 n_workers = 64
-
 
 # Split haplotypes into alleles
 def split_alleles(column):

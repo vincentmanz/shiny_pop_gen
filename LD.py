@@ -1,22 +1,57 @@
+import sys
+import json
+
+
+
+
+import numpy as np
+import pandas as pd
+from itertools import combinations
+from multiprocessing import Pool, cpu_count
+from ast import literal_eval 
+
+try:
+    # Print the arguments for debugging
+    print("Arguments received:", sys.argv)
+
+    # Parse inputs
+    data = pd.DataFrame(json.loads(sys.argv[1]))
+    loci = json.loads(sys.argv[2])
+    n_simulations = int(sys.argv[3])
+    
+    # Debug parsed data
+    print("Data parsed successfully:")
+    print(data.head())
+
+except Exception as e:
+    print("Error parsing inputs:", str(e))
+    sys.exit(1)
+
+
+
+
+
 import numpy as np
 import pandas as pd
 from itertools import combinations
 from multiprocessing import Pool, cpu_count
 
-# Dataset
-data = pd.DataFrame({
-    'Individual': ['Ind1', 'Ind2', 'Ind3', 'Ind4', 'Ind5', 'Ind6', 'Ind7', 'Ind8', 'Ind9'],
-    'Population': ['Population1', 'Population1', 'Population1', 'Population2', 'Population2', 'Population2', 'Population3', 'Population3', 'Population3'],
-    'H1': ['120/165', '120/165', '120/165', '120/165', '120/170', '165/170', '121/164', '171/181', '167/174'],
-    'H2': ['120/165', '120/165', '120/165', '120/170', '120/165', '120/170', '122/169', '163/172', '175/186'],
-    'H3': ['120/165', '120/165', '120/165', '165/170', '165/170', '120/165', '166/168', '123/173', '125/190'],
-    'H4': ['120/165', '120/165', '120/165', '120/165', '120/170', '165/170', '177/179', '129/195', '124/199']
-})
+# # Dataset
+# data = pd.DataFrame({
+#     'Individual': ['Ind1', 'Ind2', 'Ind3', 'Ind4', 'Ind5', 'Ind6', 'Ind7', 'Ind8', 'Ind9'],
+#     'Population': ['Population1', 'Population1', 'Population1', 'Population2', 'Population2', 'Population2', 'Population3', 'Population3', 'Population3'],
+#     'H1': ['120/165', '120/165', '120/165', '120/165', '120/170', '165/170', '121/164', '171/181', '167/174'],
+#     'H2': ['120/165', '120/165', '120/165', '120/170', '120/165', '120/170', '122/169', '163/172', '175/186'],
+#     'H3': ['120/165', '120/165', '120/165', '165/170', '165/170', '120/165', '166/168', '123/173', '125/190'],
+#     'H4': ['120/165', '120/165', '120/165', '120/165', '120/170', '165/170', '177/179', '129/195', '124/199']
+# })
 
 
-# Extract unique populations and loci
-populations = data['Population'].unique()
-loci = ["H1", "H2", "H3", "H4"]
+
+# Read arguments passed from R
+data = pd.DataFrame(literal_eval(sys.argv[1]))
+loci = literal_eval(sys.argv[2])
+n_simulations = int(sys.argv[3])
 loci_pairs = list(combinations(loci, 2))
 
 # Function to split alleles into two numeric columns
@@ -163,4 +198,6 @@ def generate_randomized_g_stats_parallel(data, loci, loci_pairs, n_simulations=1
 # Run the simulation
 randomized_g_stats = generate_randomized_g_stats_parallel(data, loci, loci_pairs, n_simulations=100)
 
-print(randomized_g_stats)
+
+# Output results to a JSON file or stdout
+print(json.dumps(randomized_g_stats))

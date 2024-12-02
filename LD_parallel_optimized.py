@@ -179,14 +179,14 @@ def create_summary_table(pvalues, global_pvalues):
     return summary_table
 
 # Full Workflow
-# contingency_tables = create_contingency_tables(data, loci)
-# observed_g_stats = add_g_stats_to_population_tables(contingency_tables)
+contingency_tables = create_contingency_tables(data, loci)
+observed_g_stats = add_g_stats_to_population_tables(contingency_tables)
 randomized_g_stats = generate_randomized_g_stats_parallel(data, loci, loci_pairs, n_simulations=10000)
 # pvalues = calculate_pvalues(observed_g_stats, randomized_g_stats)
 # global_pvalues = calculate_global_pvalues(observed_g_stats, randomized_g_stats)
 # summary_table = create_summary_table(pvalues, global_pvalues)
 
 # View the final summary table
-print(summary_table)
+print(randomized_g_stats)
 
 
