@@ -108,3 +108,65 @@
 # results <- compute_stats_for_all_pairs(data, loci)
 
 
+# # Test pvalues for the G-statistics of the contingency tables for each population and locus pair.
+
+# # Fake observed and simulated G-statistics
+# observed_g_stats <- list(
+#   Population1 = list(
+#     "H1-H2" = list(g_stat = 5),
+#     "H1-H3" = list(g_stat = 10)
+#   ),
+#   Population2 = list(
+#     "H1-H2" = list(g_stat = 15),
+#     "H1-H3" = list(g_stat = 20)
+#   )
+# )
+
+# simulated_g_stats <- list(
+#   Population1 = list(
+#     "H1-H2" = c(6, 7, 5, 4, 3),  # Simulated values for H1-H2
+#     "H1-H3" = c(8, 10, 12, 11, 9) # Simulated values for H1-H3
+#   ),
+#   Population2 = list(
+#     "H1-H2" = c(14, 15, 16, 13, 12), # Simulated values for H1-H2
+#     "H1-H3" = c(19, 21, 18, 22, 20)  # Simulated values for H1-H3
+#   )
+# )
+
+# # Expected p-values:
+# # For Population1:
+# # - H1-H2: Observed = 5, Simulated = [6, 7, 5, 4, 3]. P(>=5) = 3/5 = 0.6
+# # - H1-H3: Observed = 10, Simulated = [8, 10, 12, 11, 9]. P(>=10) = 3/5 = 0.6
+# #
+# # For Population2:
+# # - H1-H2: Observed = 15, Simulated = [14, 15, 16, 13, 12]. P(>=15) = 2/5 = 0.4
+# # - H1-H3: Observed = 20, Simulated = [19, 21, 18, 22, 20]. P(>=20) = 3/5 = 0.6
+
+# # Run the calculate_pvalues function
+# results <- calculate_pvalues(observed_g_stats, simulated_g_stats)
+
+# # Display the results
+# print("Calculated p-values:")
+# print(results)
+
+# # Verify the results manually
+# expected_pvalues <- list(
+#   Population1 = list(
+#     "H1-H2" = list(observed_g_stat = 5, p_value = 0.6),
+#     "H1-H3" = list(observed_g_stat = 10, p_value = 0.6)
+#   ),
+#   Population2 = list(
+#     "H1-H2" = list(observed_g_stat = 15, p_value = 0.4),
+#     "H1-H3" = list(observed_g_stat = 20, p_value = 0.6)
+#   )
+# )
+
+# print("Expected p-values:")
+# print(expected_pvalues)
+
+# # Test if the function output matches the expected values
+# if (all.equal(results, expected_pvalues)) {
+#   cat("Test passed: The function is working correctly.\n")
+# } else {
+#   cat("Test failed: The function output does not match the expected values.\n")
+# }
