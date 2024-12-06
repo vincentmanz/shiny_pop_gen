@@ -1,54 +1,34 @@
 # Load necessary libraries
-library(hierfstat)
 library(dplyr)
+library(Rcpp)
+library(hierfstat)
+library(parallel)
+library(foreach)
+library(doParallel)
+library(reticulate)
+library(jsonlite)
 
-# Load the dataset
+# # Load the dataset
+# data <- data.frame(
+#   Individual = c("Ind1", "Ind2", "Ind3", "Ind4", "Ind5", "Ind6", "Ind7", "Ind8", "Ind9"),
+#   Population = c("Population1", "Population1", "Population1", "Population2", "Population2", "Population2", "Population3", "Population3", "Population3"),
+#   H1 = c("120/165", "120/165", "120/165", "120/165", "120/170", "165/170", "121/164", "171/181", "167/174"),
+#   H2 = c("120/165", "120/165", "120/165", "120/170", "120/165", "120/170", "122/169", "163/172", "175/186"),
+#   H3 = c("120/165", "120/165", "120/165", "165/170", "165/170", "120/165", "166/168", "123/173", "125/190"),
+#   H4 = c("120/165", "120/165", "120/165", "120/165", "120/170", "165/170", "177/179", "129/195", "124/199")
+# )
+# populations <- unique(data$Population)
+# loci <- c("H1", "H2", "H3", "H4")
 data <- read.csv("data/data-2023-09-11 (2).csv")
 
 # Extract unique populations and loci
 populations <- unique(data$Population)
 loci <- c("B12", "C07", "D12", "D10", "A12", "C03")
+
+# Define loci and locus pairs
 loci_pairs <- combn(loci, 2, simplify = FALSE)
-
-
-# Create the haplotype table as a data frame
-data <- data.frame(
-  Individual = c("Ind1", "Ind2", "Ind3", "Ind4", "Ind5", "Ind6", "Ind7", "Ind8", "Ind9"),
-  Population = c("Population1", "Population1", "Population1",
-                 "Population2", "Population2", "Population2",
-                 "Population3", "Population3", "Population3"),
-  H1 = c("120/165", "120/165", "120/165",
-         "120/165", "120/170", "165/170",
-         "120/165", "170/180", "165/170"),
-  H2 = c("120/165", "120/165", "120/165",
-         "120/170", "120/165", "120/170",
-         "120/170", "165/170", "170/180"),
-  H3 = c("120/165", "120/165", "120/165",
-         "165/170", "165/170", "120/165",
-         "165/170", "120/170", "120/165"),
-  H4 = c("120/165", "120/165", "120/165",
-         "120/165", "120/170", "165/170",
-         "170/180", "120/165", "120/170")
-)
-
-
-
-# Extract unique populations and loci
-populations <- unique(data$Population)
-loci <- c("H1", "H2", "H3", "H4")
-loci_pairs <- combn(loci, 2, simplify = FALSE)
-
-
-
-
-
-
-# Initialize results storage
-results <- list()
-global_results <- list()
-
-# Number of simulations
-n_simulations <- 1000000
+n_simulations <- as.integer(10000)
+workers <- 16
 
 # Split the allele pairs into two numeric columns
 split_alleles <- function(column) {
@@ -57,44 +37,6 @@ split_alleles <- function(column) {
   allele2 <- as.numeric(sapply(alleles, `[`, 2))
   return(data.frame(allele1 = allele1, allele2 = allele2))
 }
-
-library(Rcpp)
-
-cppFunction('
-double calculateGStatCpp(NumericMatrix obs) {
-    double g_stat = 0.0;
-    int nrow = obs.nrow(), ncol = obs.ncol();
-    double nt = 0.0;
-    for (int i = 0; i < nrow; ++i) {
-        for (int j = 0; j < ncol; ++j) {
-            nt += obs(i, j);
-        }
-    }
-    NumericVector row_sum(nrow), col_sum(ncol);
-    for (int i = 0; i < nrow; ++i) {
-        for (int j = 0; j < ncol; ++j) {
-            row_sum[i] += obs(i, j);
-            col_sum[j] += obs(i, j);
-        }
-    }
-    for (int i = 0; i < nrow; ++i) {
-        for (int j = 0; j < ncol; ++j) {
-            double expected = (row_sum[i] * col_sum[j]) / nt;
-            if (obs(i, j) > 0 && expected > 0) {
-                g_stat += 2 * obs(i, j) * log(obs(i, j) / expected);
-            }
-        }
-    }
-    return g_stat;
-}
-')
-
-
-
-
-###########################
-## 1. Contingency Table ###
-###########################
 
 # Function to split alleles and generate contingency tables for each population
 create_contingency_tables <- function(data, loci) {
@@ -117,145 +59,99 @@ create_contingency_tables <- function(data, loci) {
         table(allele_data$Locus1_allele, allele_data$Locus2_allele)
       }),
       paste0(sapply(locus_pairs, function(pair) pair[1]), "-", 
-             sapply(locus_pairs, function(pair) pair[2]))
+            sapply(locus_pairs, function(pair) pair[2]))
     )
     return(contingency_list)
   })
   names(contingency_tables) <- populations
   return(contingency_tables)
 }
-#########################################################################
-#### 2. Add G-statistics obs to the nested list of contingency tables ###
-#########################################################################
 
-# Replace R function with C++ version
+# Function to calculate G-statistic for a contingency table
 calculate_g_stat <- function(contingency_table) {
-  calculateGStatCpp(as.matrix(contingency_table))
+  # Total observations
+  nt <- sum(contingency_table)
+  
+  # Row and column sums
+  row_sum <- rowSums(contingency_table)
+  col_sum <- colSums(contingency_table)
+  
+  # Expected frequencies
+  expected <- outer(row_sum, col_sum) / nt
+  
+  # Filter out zero observed values to avoid log(0)
+  non_zero <- contingency_table > 0
+  
+  # Observed and expected values for non-zero cells
+  observed_non_zero <- contingency_table[non_zero]
+  expected_non_zero <- expected[non_zero]
+  
+  # G-statistic calculation
+  g_stat <- 2 * sum(observed_non_zero * log(observed_non_zero / expected_non_zero), na.rm = TRUE)
+  
+  # Return a list with expected frequencies and the G-stat
+  return(list(
+    expected = expected,
+    g_stat = g_stat
+  ))
 }
 
-
-add_g_stats_to_population_tables <- function(contingency_tables_by_population) {
-  g_stats_by_population <- list()
-  
-  for (pop in names(contingency_tables_by_population)) {
-    pop_tables <- contingency_tables_by_population[[pop]]
-    g_stats_for_loci <- list()
+# Add G-statistics to contingency tables
+add_g_stats <- function(contingency_tables) {
+  lapply(contingency_tables, function(pop_tables) {
+    # Rename locus pairs to ensure no special characters
+    sanitized_names <- make.names(names(pop_tables), unique = TRUE)
     
-    for (pair in names(pop_tables)) {
-      contingency_table <- pop_tables[[pair]]
-      
-      # Calculate G-statistic for the contingency table
-      g_stat <- calculate_g_stat(contingency_table)
-      
-      # Store the G-statistic
-      g_stats_for_loci[[pair]] <- list(
-        contingency_table = contingency_table,
-        g_stat = g_stat
-      )
-    }
-    
-    # Store the G-statistics for the population
-    g_stats_by_population[[pop]] <- g_stats_for_loci
-  }
-  
-  return(g_stats_by_population)
-}
-############################################
-### 3. Gstat simulation ####################
-############################################
-# Function to randomize haplotypes within a population
-randomize_haplotypes_within_population <- function(pop_data, loci) {
-  randomized_data <- pop_data
-  for (locus in loci) {
-    randomized_data[[locus]] <- sample(randomized_data[[locus]])
-  }
-  return(randomized_data)
-}
-
-
-generate_randomized_g_stats_optimized <- function(data, loci, n_simulations = 10000, n_cores = 16) {
-  populations <- unique(data$Population)
-  
-  # Define the C++ function code
-  cpp_code <- '
-  double calculateGStatCpp(NumericMatrix obs) {
-      double g_stat = 0.0;
-      int nrow = obs.nrow(), ncol = obs.ncol();
-      double nt = 0.0;
-      for (int i = 0; i < nrow; ++i) {
-          for (int j = 0; j < ncol; ++j) {
-              nt += obs(i, j);
-          }
-      }
-      NumericVector row_sum(nrow), col_sum(ncol);
-      for (int i = 0; i < nrow; ++i) {
-          for (int j = 0; j < ncol; ++j) {
-              row_sum[i] += obs(i, j);
-              col_sum[j] += obs(i, j);
-          }
-      }
-      for (int i = 0; i < nrow; ++i) {
-          for (int j = 0; j < ncol; ++j) {
-              double expected = (row_sum[i] * col_sum[j]) / nt;
-              if (obs(i, j) > 0 && expected > 0) {
-                  g_stat += 2 * obs(i, j) * log(obs(i, j) / expected);
-              }
-          }
-      }
-      return g_stat;
-  }
-  '
-  
-  cl <- parallel::makeCluster(n_cores)
-  
-  # Export necessary objects and functions to the cluster
-  parallel::clusterExport(cl, c("data", "loci", "randomize_haplotypes_within_population", 
-                                "split_alleles", "cpp_code", "n_simulations"), envir = environment())
-  
-  # Compile the C++ function on each worker node
-  parallel::clusterEvalQ(cl, {
-    library(Rcpp)
-    cppFunction(cpp_code)
-  })
-  
-  parallel::clusterEvalQ(cl, library(dplyr))
-  
-  randomized_g_stats <- parallel::parLapply(cl, populations, function(pop) {
-    pop_data <- data %>% filter(Population == pop)
-    locus_pairs <- combn(loci, 2, simplify = FALSE)
-    pop_results <- list()
-    
-    randomized_pop_data_list <- lapply(1:n_simulations, function(i) {
-      randomize_haplotypes_within_population(pop_data, loci)
-    })
-    
-    for (pair in locus_pairs) {
-      locus1 <- pair[1]
-      locus2 <- pair[2]
-      pair_results <- sapply(1:n_simulations, function(i) {
-        randomized_pop_data <- randomized_pop_data_list[[i]]
-        locus1_split <- split_alleles(randomized_pop_data[[locus1]])
-        locus2_split <- split_alleles(randomized_pop_data[[locus2]])
-        allele_data <- data.frame(
-          Locus1_allele = c(locus1_split$allele1, locus1_split$allele2),
-          Locus2_allele = c(locus2_split$allele1, locus2_split$allele2)
+    setNames(
+      lapply(names(pop_tables), function(pair_name) {
+        contingency_table <- pop_tables[[pair_name]]
+        g_stat <- calculate_g_stat(contingency_table)
+        
+        list(
+          contingency_table = contingency_table,
+          expected_contingency_table = g_stat$expected,
+          g_stat = g_stat$g_stat
         )
-        contingency_table <- table(allele_data$Locus1_allele, allele_data$Locus2_allele)
-        calculateGStatCpp(as.matrix(contingency_table))
-      })
-      pop_results[[paste(locus1, locus2, sep = "-")]] <- pair_results
-    }
-    return(pop_results)
+      }),
+      sanitized_names
+    )
   })
-  
-  parallel::stopCluster(cl)
-  
-  names(randomized_g_stats) <- populations
-  return(randomized_g_stats)
 }
 
+# Function to flatten the nested list structure and sanitize names
+flatten_simulated_stats <- function(simulated_stats) {
+  flattened_stats <- list()
+  for (pop in names(simulated_stats)) {
+    pop_stats <- list()
+    for (pair in names(simulated_stats[[pop]])) {
+      # Flatten the list of individual simulations into a single vector
+      flattened_values <- unlist(simulated_stats[[pop]][[pair]])
+      
+      # Replace backticks and dashes with dots
+      sanitized_pair <- gsub("[-`]", ".", pair)
+      
+      # Add the sanitized pair to the nested list
+      pop_stats[[sanitized_pair]] <- flattened_values
+    }
+    # Assign sanitized names to the nested list
+    flattened_stats[[pop]] <- pop_stats
+  }
+  
+  # Reassign sanitized names to ensure no backticks at any level
+  names(flattened_stats) <- gsub("[-`]", ".", names(flattened_stats))
+  
+  # Sanitize names in the second-level list
+  for (pop in names(flattened_stats)) {
+    names(flattened_stats[[pop]]) <- gsub("[-`]", ".", names(flattened_stats[[pop]]))
+  }
+  
+  return(flattened_stats)
+}
+
+# Calculate p-values for G-statistics
 calculate_pvalues <- function(observed_g_stats, simulated_g_stats) {
   results <- list()
+  
   for (pop in names(observed_g_stats)) {
     observed <- observed_g_stats[[pop]]
     simulated <- simulated_g_stats[[pop]]
@@ -263,16 +159,28 @@ calculate_pvalues <- function(observed_g_stats, simulated_g_stats) {
     
     for (pair in names(observed)) {
       observed_g <- observed[[pair]]$g_stat
-      simulated_g <- simulated[[pair]]
       
-      count_g_simule <- sum(simulated_g >= observed_g)
-      total_simulations <- length(simulated_g)
-      p_value <- round(count_g_simule / total_simulations, 4)
+      # Check if simulated_g exists and is valid
+      if (!is.null(simulated[[pair]]) && length(simulated[[pair]]) > 0) {
+        simulated_g <- simulated[[pair]]
+        
+        # Remove NA values from simulated G-statistics
+        simulated_g <- simulated_g[!is.na(simulated_g)]
+        
+        if (length(simulated_g) > 0) {
+          # Calculate p-value
+          p_value <- mean(simulated_g >= observed_g)
+        } else {
+          p_value <- NaN
+        }
+      } else {
+        # If no simulations are available, return NaN for p-value
+        p_value <- NaN
+      }
       
+      # Store results
       pop_results[[pair]] <- list(
-        observed_g_stat = round(observed_g, 4),
-        count_g_simule = count_g_simule,
-        total_simulations = total_simulations,
+        observed_g_stat = observed_g,
         p_value = p_value
       )
     }
@@ -280,9 +188,7 @@ calculate_pvalues <- function(observed_g_stats, simulated_g_stats) {
   }
   return(results)
 }
-##################################################
-### 5. Gstat global ##############################
-##################################################
+
 # Calculate global p-values
 calculate_global_pvalues <- function(observed_g_stats, simulated_g_stats) {
   locus_pairs <- unique(unlist(lapply(observed_g_stats, names)))
@@ -296,9 +202,7 @@ calculate_global_pvalues <- function(observed_g_stats, simulated_g_stats) {
     mean(g_sim >= mean(g_obs, na.rm = TRUE))
   })
 }
-##############################################################
-## 6. make the table with the p-values #######################
-##############################################################
+
 # Create a summary table of p-values
 create_summary_table <- function(pvalues, global_pvalues) {
   all_pairs <- unique(unlist(lapply(pvalues, names)))
@@ -315,23 +219,68 @@ create_summary_table <- function(pvalues, global_pvalues) {
   summary_table$Global_P_Value <- sapply(all_pairs, function(pair) global_pvalues[pair])
   return(summary_table)
 }
-##################################################
-### Full Workflow ###############################
-##################################################
+
+# Function to check and set up Python environment
+setup_python_env <- function(env_name = "LD") {
+  # Check if the environment exists
+  if (!condaenv_exists(env_name)) {
+    cat("Environment", env_name, "does not exist. Creating it with mamba...\n")
+    
+    # Create the environment using mamba
+    system(paste("mamba create -n", env_name, "python=3.9 numpy pandas scipy multiprocessing -y"))
+  } else {
+    cat("Environment", env_name, "already exists. Using it...\n")
+  }
+  
+  # Use the conda environment
+  use_condaenv(env_name, required = TRUE)
+  cat("Environment", env_name, "is set up and ready.\n")
+}
+
+# Call the function to set up and activate the LD environment
+setup_python_env("LD")
+
+# Run Python code in the LD environment
+py_run_string("
+import numpy as np
+import pandas as pd
+from itertools import combinations
+from multiprocessing import Pool, cpu_count
+
+# Example Python code
+print('Python environment is ready and operational.')
+")
+# Prepare data and variables
+data_json <- jsonlite::toJSON(data, dataframe = "rows", auto_unbox = TRUE)
+loci_json <- jsonlite::toJSON(loci, auto_unbox = TRUE)
+
+# Save JSON arguments to files if needed
+write(data_json, "data.json")
+write(loci_json, "loci.json")
+
+# Call Python script within LD environment using mamba
+result <- system2(
+  command = "mamba",
+  args = c("run", "-n", "LD", "python", "LD.py", shQuote(data_json), shQuote(loci_json), n_simulations),
+  stdout = TRUE,
+  stderr = TRUE
+)
+
 # Step 1: Generate contingency tables
 contingency_tables <- create_contingency_tables(data, loci)
 
 # Step 2: Add observed G-stats
-observed_g_stats <- add_g_stats_to_population_tables(contingency_tables)
+observed_g_stats <- add_g_stats(contingency_tables)
 
 # Step 3: Generate randomized G-stats
-randomized_g_stats <- generate_randomized_g_stats_optimized(data, loci, n_simulations = 1000)
-
+# randomized_g_stats <- generate_randomized_g_stats_parallel(data, loci, n_simulations = 1000)
+randomized_g_stats_PY <- randomized_g_stats <- fromJSON(result)
+randomized_g_stats_PY <- flatten_simulated_stats(randomized_g_stats_PY)
 # Step 4: Calculate p-values
-pvalues <- calculate_pvalues(observed_g_stats, randomized_g_stats)
+pvalues <- calculate_pvalues(observed_g_stats, randomized_g_stats_PY)
 
 # Step 5: Calculate global p-values
-global_pvalues <- calculate_global_pvalues(observed_g_stats, randomized_g_stats)
+global_pvalues <- calculate_global_pvalues(observed_g_stats, randomized_g_stats_PY)
 
 # Step 6: Create summary table
 summary_table <- create_summary_table(pvalues, global_pvalues)
