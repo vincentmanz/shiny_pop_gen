@@ -27,18 +27,10 @@ loci <- c("B12", "C07", "D12", "D10", "A12", "C03")
 
 # Define loci and locus pairs
 loci_pairs <- combn(loci, 2, simplify = FALSE)
-n_simulations <- as.integer(10000)
+n_simulations <- as.integer(100)
 workers <- 16
 
-# Split the allele pairs into two numeric columns
-split_alleles <- function(column) {
-  alleles <- strsplit(as.character(column), "/")
-  allele1 <- as.numeric(sapply(alleles, `[`, 1))
-  allele2 <- as.numeric(sapply(alleles, `[`, 2))
-  return(data.frame(allele1 = allele1, allele2 = allele2))
-}
-
-# Function to split alleles and generate contingency tables for each population
+# Function to create contingency tables for each population without splitting haplotypes
 create_contingency_tables <- function(data, loci) {
   populations <- unique(data$Population)
   contingency_tables <- lapply(populations, function(pop) {
@@ -50,16 +42,21 @@ create_contingency_tables <- function(data, loci) {
       lapply(locus_pairs, function(pair) {
         locus1 <- pair[1]
         locus2 <- pair[2]
-        locus1_split <- split_alleles(pop_data[[locus1]])
-        locus2_split <- split_alleles(pop_data[[locus2]])
-        allele_data <- data.frame(
-          Locus1_allele = c(locus1_split$allele1, locus1_split$allele2),
-          Locus2_allele = c(locus2_split$allele1, locus2_split$allele2)
+        haplotype_data <- data.frame(
+          Locus1_haplotype = unlist(pop_data[[locus1]]),
+          Locus2_haplotype = unlist(pop_data[[locus2]])
         )
-        table(allele_data$Locus1_allele, allele_data$Locus2_allele)
+        contingency_table <- table(haplotype_data$Locus1_haplotype, haplotype_data$Locus2_haplotype)
+        
+        # Remove rows and columns with 0/0
+        non_zero_rows <- rownames(contingency_table) != "0/0"
+        non_zero_cols <- colnames(contingency_table) != "0/0"
+        cleaned_table <- contingency_table[non_zero_rows, non_zero_cols, drop = FALSE]
+        
+        return(cleaned_table)
       }),
       paste0(sapply(locus_pairs, function(pair) pair[1]), "-", 
-            sapply(locus_pairs, function(pair) pair[2]))
+             sapply(locus_pairs, function(pair) pair[2]))
     )
     return(contingency_list)
   })
@@ -96,7 +93,7 @@ calculate_g_stat <- function(contingency_table) {
   ))
 }
 
-# Add G-statistics to contingency tables
+# Add G-statistics to contingency tables  
 add_g_stats <- function(contingency_tables) {
   lapply(contingency_tables, function(pop_tables) {
     # Rename locus pairs to ensure no special characters

@@ -43,11 +43,6 @@ from ast import literal_eval
 #     sys.exit(1)
 
 # Function to split alleles into two numeric columns
-def split_alleles(column):
-    alleles = column.str.split("/", expand=True)
-    alleles.columns = ["allele1", "allele2"]
-    alleles = alleles.apply(pd.to_numeric, errors='coerce')
-    return alleles
 
 # Function to calculate G-statistic
 def calculate_g_stat(contingency_table):
@@ -60,12 +55,14 @@ def calculate_g_stat(contingency_table):
     g_stat = 2 * np.sum(observed[mask] * np.log(observed[mask] / expected[mask]))
     return g_stat
 
+
 # Function to randomize haplotypes within a population
 def randomize_haplotypes_within_population(pop_data, loci):
     randomized_data = pop_data.copy()
     for locus in loci:
         randomized_data[locus] = np.random.permutation(randomized_data[locus])
     return randomized_data
+
 
 # Function to generate randomized G-statistics for a single population
 def generate_randomized_g_stats_for_population(args):
@@ -74,16 +71,65 @@ def generate_randomized_g_stats_for_population(args):
     for _ in range(n_simulations):
         randomized_pop_data = randomize_haplotypes_within_population(pop_data, loci)
         for pair in loci_pairs:
-            locus1_split = split_alleles(randomized_pop_data[pair[0]])
-            locus2_split = split_alleles(randomized_pop_data[pair[1]])
-            allele_data = pd.DataFrame({
-                'Locus1_allele': pd.concat([locus1_split['allele1'], locus1_split['allele2']]),
-                'Locus2_allele': pd.concat([locus2_split['allele1'], locus2_split['allele2']])
+            haplotype_data = pd.DataFrame({
+                'Locus1_haplotype': randomized_pop_data[pair[0]],
+                'Locus2_haplotype': randomized_pop_data[pair[1]],
             })
-            contingency_table = pd.crosstab(allele_data['Locus1_allele'], allele_data['Locus2_allele'])
-            g_stat = calculate_g_stat(contingency_table)
+            contingency_table = pd.crosstab(
+                haplotype_data['Locus1_haplotype'],
+                haplotype_data['Locus2_haplotype']
+            )
+            
+            # Clean the contingency table
+            non_zero_rows = contingency_table.index != "0/0"
+            non_zero_cols = contingency_table.columns != "0/0"
+            cleaned_table = contingency_table.loc[non_zero_rows, non_zero_cols]
+            
+            # Skip empty tables after cleaning
+            if cleaned_table.empty:
+                continue
+
+            # Calculate G-stat for the cleaned table
+            g_stat = calculate_g_stat(cleaned_table)
             results[f"{pair[0]}-{pair[1]}"].append(g_stat)
     return pop, results
+
+def generate_randomized_g_stats_for_population(args):
+    pop, pop_data, loci, loci_pairs, n_simulations = args
+    # Initialize results dictionary with an empty list for each loci pair
+    results = {f"{pair[0]}-{pair[1]}": [] for pair in loci_pairs}
+
+    for _ in range(n_simulations):
+        randomized_pop_data = randomize_haplotypes_within_population(pop_data, loci)
+        for pair in loci_pairs:
+            haplotype_data = pd.DataFrame({
+                'Locus1_haplotype': randomized_pop_data[pair[0]],
+                'Locus2_haplotype': randomized_pop_data[pair[1]],
+            })
+            contingency_table = pd.crosstab(
+                haplotype_data['Locus1_haplotype'],
+                haplotype_data['Locus2_haplotype']
+            )
+            
+            # Clean the contingency table
+            non_zero_rows = contingency_table.index != "0/0"
+            non_zero_cols = contingency_table.columns != "0/0"
+            cleaned_table = contingency_table.loc[non_zero_rows, non_zero_cols]
+            
+            # Skip empty tables after cleaning
+            if cleaned_table.empty:
+                continue
+
+            # Calculate G-stat for the cleaned table
+            g_stat = calculate_g_stat(cleaned_table)
+
+            # Store both G-stat and the cleaned contingency table
+            results[f"{pair[0]}-{pair[1]}"].append({
+                'g_stat': g_stat,
+                'contingency_table': cleaned_table.to_dict()  # Convert table to dict for JSON compatibility
+            })
+    return pop, results
+
 
 # Function to run simulations in parallel
 def generate_randomized_g_stats_parallel(data, loci, loci_pairs, n_simulations=100):
@@ -96,7 +142,6 @@ def generate_randomized_g_stats_parallel(data, loci, loci_pairs, n_simulations=1
     with Pool(n_cores) as pool:
         results = pool.map(generate_randomized_g_stats_for_population, args_list)
     return {pop: res for pop, res in results}
-
 
 
 def parse_inputs():
@@ -117,6 +162,7 @@ def parse_inputs():
     except Exception as e:
         sys.stderr.write(f"Error parsing inputs: {str(e)}\n")
         sys.exit(1)
+
 
 # Main execution
 if __name__ == "__main__":
