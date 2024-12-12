@@ -94,41 +94,7 @@ def generate_randomized_g_stats_for_population(args):
             results[f"{pair[0]}-{pair[1]}"].append(g_stat)
     return pop, results
 
-def generate_randomized_g_stats_for_population(args):
-    pop, pop_data, loci, loci_pairs, n_simulations = args
-    # Initialize results dictionary with an empty list for each loci pair
-    results = {f"{pair[0]}-{pair[1]}": [] for pair in loci_pairs}
 
-    for _ in range(n_simulations):
-        randomized_pop_data = randomize_haplotypes_within_population(pop_data, loci)
-        for pair in loci_pairs:
-            haplotype_data = pd.DataFrame({
-                'Locus1_haplotype': randomized_pop_data[pair[0]],
-                'Locus2_haplotype': randomized_pop_data[pair[1]],
-            })
-            contingency_table = pd.crosstab(
-                haplotype_data['Locus1_haplotype'],
-                haplotype_data['Locus2_haplotype']
-            )
-            
-            # Clean the contingency table
-            non_zero_rows = contingency_table.index != "0/0"
-            non_zero_cols = contingency_table.columns != "0/0"
-            cleaned_table = contingency_table.loc[non_zero_rows, non_zero_cols]
-            
-            # Skip empty tables after cleaning
-            if cleaned_table.empty:
-                continue
-
-            # Calculate G-stat for the cleaned table
-            g_stat = calculate_g_stat(cleaned_table)
-
-            # Store both G-stat and the cleaned contingency table
-            results[f"{pair[0]}-{pair[1]}"].append({
-                'g_stat': g_stat,
-                'contingency_table': cleaned_table.to_dict()  # Convert table to dict for JSON compatibility
-            })
-    return pop, results
 
 
 # Function to run simulations in parallel
