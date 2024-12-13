@@ -8,34 +8,41 @@ library(doParallel)
 library(reticulate)
 library(jsonlite)
 
-# # Load the dataset
-# data <- data.frame(
-#   Individual = c("Ind1", "Ind2", "Ind3", "Ind4", "Ind5", "Ind6", "Ind7", "Ind8", "Ind9"),
-#   Population = c("Population1", "Population1", "Population1", "Population2", "Population2", "Population2", "Population3", "Population3", "Population3"),
-#   H1 = c("120/165", "120/165", "120/165", "120/165", "120/170", "165/170", "121/164", "171/181", "167/174"),
-#   H2 = c("120/165", "120/165", "120/165", "120/170", "120/165", "120/170", "122/169", "163/172", "175/186"),
-#   H3 = c("120/165", "120/165", "120/165", "165/170", "165/170", "120/165", "166/168", "123/173", "125/190"),
-#   H4 = c("120/165", "120/165", "120/165", "120/165", "120/170", "165/170", "177/179", "129/195", "124/199")
-# )
-# populations <- unique(data$Population)
-# loci <- c("H1", "H2", "H3", "H4")
-data <- read.csv("data/data-2023-09-11 (2).csv")
+# Load the dataset
+data <- data.frame(
+  Individual = c("Ind1", "Ind2", "Ind3", "Ind4", "Ind5", "Ind6", "Ind7", "Ind8", "Ind9"),
+  Population = c("Population1", "Population1", "Population1", "Population2", "Population2", "Population2", "Population3", "Population3", "Population3"),
+  H1 = c("120/165", "120/165", "120/165", "0/0", "0/0", "165/170", "121/164", "171/181", "167/174"),
+  H2 = c("120/165", "120/165", "120/165", "120/170", "120/165", "120/170", "122/169", "163/172", "175/186"),
+  H3 = c("120/165", "120/165", "120/165", "165/170", "165/170", "120/165", "166/168", "123/173", "125/190"),
+  H4 = c("120/165", "120/165", "120/165", "120/165", "120/170", "165/170", "177/179", "129/195", "124/199")
+)
+populations <- unique(data$Population)
+loci <- c("H1", "H2", "H3", "H4")
+
 # data <- read.csv("dummy_data.csv")
+# loci <- c( "D12", "C03")
+
+# data <- read.csv("data/data-2023-09-11 (2).csv")
+# loci <- c("B12", "C07", "D12", "D10", "A12", "C03")
 
 # Extract unique populations and loci
 populations <- unique(data$Population)
-loci <- c( "D12", "C03")
-loci <- c("B12", "C07", "D12", "D10", "A12", "C03")
 # Define loci and locus pairs
 loci_pairs <- combn(loci, 2, simplify = FALSE)
 n_simulations <- as.integer(1000)
 workers <- 16
 
 # Function to create contingency tables for each population without splitting haplotypes
+# Function to create contingency tables for each population without splitting haplotypes
 create_contingency_tables <- function(data, loci) {
   populations <- unique(data$Population)
+  
   contingency_tables <- lapply(populations, function(pop) {
+    # Subset data for the population
     pop_data <- data[data$Population == pop, ]
+    
+    # Define locus pairs
     locus_pairs <- combn(loci, 2, simplify = FALSE)
     
     # Create named list of contingency tables
@@ -43,24 +50,27 @@ create_contingency_tables <- function(data, loci) {
       lapply(locus_pairs, function(pair) {
         locus1 <- pair[1]
         locus2 <- pair[2]
+        
+        # Remove individuals with "0/0" in either locus
+        pop_data_filtered <- pop_data[pop_data[[locus1]] != "0/0" & pop_data[[locus2]] != "0/0", ]
+        
+        # Create haplotype data
         haplotype_data <- data.frame(
-          Locus1_haplotype = unlist(pop_data[[locus1]]),
-          Locus2_haplotype = unlist(pop_data[[locus2]])
+          Locus1_haplotype = unlist(pop_data_filtered[[locus1]]),
+          Locus2_haplotype = unlist(pop_data_filtered[[locus2]])
         )
+        
+        # Create contingency table
         contingency_table <- table(haplotype_data$Locus1_haplotype, haplotype_data$Locus2_haplotype)
         
-        # Remove rows and columns with 0/0
-        non_zero_rows <- rownames(contingency_table) != "0/0"
-        non_zero_cols <- colnames(contingency_table) != "0/0"
-        cleaned_table <- contingency_table[non_zero_rows, non_zero_cols, drop = FALSE]
-        
-        return(cleaned_table)
+        return(contingency_table)
       }),
       paste0(sapply(locus_pairs, function(pair) pair[1]), "-", 
              sapply(locus_pairs, function(pair) pair[2]))
     )
     return(contingency_list)
   })
+  
   names(contingency_tables) <- populations
   return(contingency_tables)
 }
@@ -147,7 +157,7 @@ flatten_simulated_stats <- function(simulated_stats) {
 }
 
 # Calculate p-values for G-statistics
-calculate_pvalues <- function(observed_g_stats, simulated_g_stats, epsilon = 1e-10) {
+calculate_pvalues <- function(observed_g_stats, simulated_g_stats, epsilon = 1e-4) {
   results <- list()
   
   for (pop in names(observed_g_stats)) {
@@ -287,5 +297,4 @@ summary_table <- create_summary_table(pvalues, global_pvalues)
 
 # View the final summary table
 print(summary_table)
-
 

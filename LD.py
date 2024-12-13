@@ -28,14 +28,11 @@ def randomize_haplotypes_within_population(pop_data, loci):
 def generate_randomized_g_stats_for_population(args):
     pop, pop_data, loci, loci_pairs, n_simulations = args
     results = {f"{pair[0]}-{pair[1]}": [] for pair in loci_pairs}
-
-    for pair in loci_pairs:
-        # Remove individuals with "0/0" for the specified loci pair
-        pop_data = pop_data[(pop_data[pair[0]] != "0/0") & (pop_data[pair[1]] != "0/0")]
-
     for _ in range(n_simulations):
         randomized_pop_data = randomize_haplotypes_within_population(pop_data, loci)
         for pair in loci_pairs:
+            # Remove rows with "0/0" for the specified loci pair
+            pop_data = pop_data[(pop_data[pair[0]] != "0/0") & (pop_data[pair[1]] != "0/0")]
             haplotype_data = pd.DataFrame({
                 'Locus1_haplotype': randomized_pop_data[pair[0]],
                 'Locus2_haplotype': randomized_pop_data[pair[1]],
@@ -45,15 +42,16 @@ def generate_randomized_g_stats_for_population(args):
                 haplotype_data['Locus2_haplotype']
             )
 
-            # Calculate G-stat for the table
+            # Calculate G-stat for the contingency table
             g_stat = calculate_g_stat(contingency_table)
             results[f"{pair[0]}-{pair[1]}"].append(g_stat)
     return pop, results
 
+
 # Function to run simulations in parallel
-def generate_randomized_g_stats_parallel(data, loci, loci_pairs, n_simulations=100):
+def generate_randomized_g_stats_parallel(data, loci, loci_pairs, n_simulations):
     populations = data['Population'].unique()
-    n_cores = cpu_count()  # Use all available CPU cores
+    n_cores = cpu_count()  # Use specified or available CPU cores
     args_list = [
         (pop, data[data['Population'] == pop], loci, loci_pairs, n_simulations)
         for pop in populations
