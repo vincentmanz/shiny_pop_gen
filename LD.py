@@ -88,12 +88,10 @@ if __name__ == "__main__":
     
     # Generate loci pairs
     loci_pairs = list(combinations(loci, 2))
-
     # Simulation function
     try:
         randomized_g_stats = generate_randomized_g_stats_parallel(data, loci, loci_pairs, n_simulations)
         # Output results to stdout
-        print(json.dumps(randomized_g_stats))
     except Exception as e:
         sys.stderr.write(f"Error during simulation: {str(e)}\n")
         sys.exit(1)

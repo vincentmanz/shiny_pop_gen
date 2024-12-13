@@ -20,15 +20,16 @@ library(jsonlite)
 # populations <- unique(data$Population)
 # loci <- c("H1", "H2", "H3", "H4")
 data <- read.csv("data/data-2023-09-11 (2).csv")
+# data <- read.csv("dummy_data.csv")
 
 # Extract unique populations and loci
 populations <- unique(data$Population)
+loci <- c( "D12", "C03")
 loci <- c("B12", "C07", "D12", "D10", "A12", "C03")
-
 # Define loci and locus pairs
 loci_pairs <- combn(loci, 2, simplify = FALSE)
-n_simulations <- as.integer(100)
-workers <- 60
+n_simulations <- as.integer(1000)
+workers <- 16
 
 # Function to create contingency tables for each population without splitting haplotypes
 create_contingency_tables <- function(data, loci) {
@@ -146,7 +147,7 @@ flatten_simulated_stats <- function(simulated_stats) {
 }
 
 # Calculate p-values for G-statistics
-calculate_pvalues <- function(observed_g_stats, simulated_g_stats) {
+calculate_pvalues <- function(observed_g_stats, simulated_g_stats, epsilon = 1e-10) {
   results <- list()
   
   for (pop in names(observed_g_stats)) {
@@ -165,8 +166,8 @@ calculate_pvalues <- function(observed_g_stats, simulated_g_stats) {
         simulated_g <- simulated_g[!is.na(simulated_g)]
         
         if (length(simulated_g) > 0) {
-          # Calculate p-value
-          p_value <- mean(simulated_g >= observed_g)
+          # Calculate p-value with tolerance
+          p_value <- mean(simulated_g >= (observed_g - epsilon))
         } else {
           p_value <- NaN
         }
@@ -185,6 +186,8 @@ calculate_pvalues <- function(observed_g_stats, simulated_g_stats) {
   }
   return(results)
 }
+
+
 
 # Calculate global p-values
 calculate_global_pvalues <- function(observed_g_stats, simulated_g_stats) {
@@ -284,3 +287,5 @@ summary_table <- create_summary_table(pvalues, global_pvalues)
 
 # View the final summary table
 print(summary_table)
+
+
