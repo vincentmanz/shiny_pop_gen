@@ -27,7 +27,7 @@ loci <- c("B12", "C07", "D12", "D10", "A12", "C03")
 
 # Define loci and locus pairs
 loci_pairs <- combn(loci, 2, simplify = FALSE)
-n_simulations <- as.integer(1000)
+n_simulations <- as.integer(100)
 workers <- 60
 
 # Function to create contingency tables for each population without splitting haplotypes
