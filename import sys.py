@@ -6,7 +6,7 @@ from itertools import combinations
 from multiprocessing import Pool, cpu_count
 
 # Parameters
-DATA_FILE = "data/data-2023-09-11 (2).csv"  # Path to the CSV file
+DATA_FILE = "dummy_data.csv"  # Path to the CSV file
 LOCI = ["B12", "C07", "D12", "D10", "A12", "C03"]  # List of loci
 N_SIMULATIONS = 100  # Number of simulations
 WORKERS = 60  # Number of workers for multiprocessing
