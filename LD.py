@@ -64,6 +64,9 @@ def generate_randomized_g_stats_parallel(data, loci, loci_pairs, n_simulations=1
 
 def parse_inputs():
     try:
+        if len(sys.argv) < 4:
+            raise ValueError("Not enough input arguments provided. Expecting: data, loci, n_simulations.")
+        
         # Parse inputs from command-line arguments
         data = pd.DataFrame(json.loads(sys.argv[1]))
         loci = json.loads(sys.argv[2])
@@ -81,6 +84,7 @@ def parse_inputs():
         sys.stderr.write(f"Error parsing inputs: {str(e)}\n")
         sys.exit(1)
 
+
 # Main execution
 if __name__ == "__main__":
     # Parse inputs
@@ -92,6 +96,7 @@ if __name__ == "__main__":
     try:
         randomized_g_stats = generate_randomized_g_stats_parallel(data, loci, loci_pairs, n_simulations)
         # Output results to stdout
+        print(json.dumps(randomized_g_stats))
     except Exception as e:
         sys.stderr.write(f"Error during simulation: {str(e)}\n")
         sys.exit(1)
