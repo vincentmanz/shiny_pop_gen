@@ -23,17 +23,7 @@ library(jsonlite)
 # data <- read.csv("dummy_data.csv")
 # loci <- c( "D12", "C03")
 
-data <- read.csv("data/data-2023-09-11 (2).csv")
-loci <- c("B12", "C07", "D12", "D10", "A12", "C03")
 
-# Extract unique populations and loci
-populations <- unique(data$Population)
-# Define loci and locus pairs
-loci_pairs <- combn(loci, 2, simplify = FALSE)
-n_simulations <- as.integer(1000)
-workers <- 16
-
-# Function to create contingency tables for each population without splitting haplotypes
 # Function to create contingency tables for each population without splitting haplotypes
 create_contingency_tables <- function(data, loci) {
   populations <- unique(data$Population)
@@ -126,36 +116,6 @@ add_g_stats <- function(contingency_tables) {
   })
 }
 
-# Function to flatten the nested list structure and sanitize names
-flatten_simulated_stats <- function(simulated_stats) {
-  flattened_stats <- list()
-  for (pop in names(simulated_stats)) {
-    pop_stats <- list()
-    for (pair in names(simulated_stats[[pop]])) {
-      # Flatten the list of individual simulations into a single vector
-      flattened_values <- unlist(simulated_stats[[pop]][[pair]])
-      
-      # Replace backticks and dashes with dots
-      sanitized_pair <- gsub("[-`]", ".", pair)
-      
-      # Add the sanitized pair to the nested list
-      pop_stats[[sanitized_pair]] <- flattened_values
-    }
-    # Assign sanitized names to the nested list
-    flattened_stats[[pop]] <- pop_stats
-  }
-  
-  # Reassign sanitized names to ensure no backticks at any level
-  names(flattened_stats) <- gsub("[-`]", ".", names(flattened_stats))
-  
-  # Sanitize names in the second-level list
-  for (pop in names(flattened_stats)) {
-    names(flattened_stats[[pop]]) <- gsub("[-`]", ".", names(flattened_stats[[pop]]))
-  }
-  
-  return(flattened_stats)
-}
-
 # Calculate p-values for G-statistics
 calculate_pvalues <- function(observed_g_stats, simulated_g_stats, epsilon = 1e-4) {
   results <- list()
@@ -230,51 +190,81 @@ create_summary_table <- function(pvalues, global_pvalues) {
   return(summary_table)
 }
 
-# Function to check and set up Python environment
-setup_python_env <- function(env_name = "LD") {
-  # Check if the environment exists
-  if (!condaenv_exists(env_name)) {
-    cat("Environment", env_name, "does not exist. Creating it with mamba...\n")
+
+# Function to generate randomized G-statistics
+randomized_g_stats <- function(data, loci, n_simulations, calculate_g_stat) {
+  workers <- parallel::detectCores() - 1  # Default to using available cores minus 1
+  
+  # Create a cluster
+  cl <- makeCluster(workers)
+  registerDoParallel(cl)
+  
+  # Export calculate_g_stat to the cluster
+  clusterExport(cl, varlist = c("calculate_g_stat"), envir = environment())
+  
+  # Extract populations and locus pairs
+  populations <- unique(data$Population)
+  locus_pairs <- combn(loci, 2, simplify = FALSE)
+  
+  # Perform simulations in parallel
+  results <- foreach(pop = populations, .combine = 'c', .packages = c('dplyr')) %dopar% {
+    pop_data <- data[data$Population == pop, ]
+    pop_results <- setNames(vector("list", length(locus_pairs)), sapply(locus_pairs, function(pair) gsub("[-`]+", ".", paste(pair[1], pair[2], sep = "."))))
     
-    # Create the environment using mamba
-    system(paste("mamba create -n", env_name, "python=3.9 numpy pandas scipy multiprocessing -y"))
-  } else {
-    cat("Environment", env_name, "already exists. Using it...\n")
+    for (pair in locus_pairs) {
+      locus1 <- pair[1]
+      locus2 <- pair[2]
+      g_stats <- numeric(n_simulations)
+      
+      for (i in 1:n_simulations) {
+        # Randomize haplotypes within the population
+        randomized_data <- pop_data
+        randomized_data[[locus1]] <- sample(pop_data[[locus1]])
+        randomized_data[[locus2]] <- sample(pop_data[[locus2]])
+        
+        # Remove individuals with "0/0" in either locus
+        filtered_data <- randomized_data[randomized_data[[locus1]] != "0/0" & randomized_data[[locus2]] != "0/0", ]
+        
+        if (nrow(filtered_data) == 0) {
+          g_stats[i] <- NA  # Handle empty filtered data
+          next
+        }
+        
+        # Create contingency table
+        haplotype_data <- data.frame(
+          Locus1_haplotype = filtered_data[[locus1]],
+          Locus2_haplotype = filtered_data[[locus2]]
+        )
+        contingency_table <- table(haplotype_data$Locus1_haplotype, haplotype_data$Locus2_haplotype)
+        
+        # Calculate G-statistic
+        g_stats[i] <- calculate_g_stat(contingency_table)$g_stat
+      }
+      
+      # Store G-statistics for the locus pair as a vector
+      clean_name <- gsub("[-`]+", ".", paste(locus1, locus2, sep = "."))
+      pop_results[[clean_name]] <- g_stats
+    }
+    list(setNames(list(pop_results), pop))
   }
   
-  # Use the conda environment
-  use_condaenv(env_name, required = TRUE)
-  cat("Environment", env_name, "is set up and ready.\n")
+  # Stop the cluster
+  stopCluster(cl)
+  
+  # Combine results into a proper list
+  final_results <- do.call(c, results)
+  return(final_results)
 }
 
-# Call the function to set up and activate the LD environment
-setup_python_env("LD")
 
-# Run Python code in the LD environment
-py_run_string("
-import numpy as np
-import pandas as pd
-from itertools import combinations
-from multiprocessing import Pool, cpu_count
+data <- read.csv("data/data-2023-09-11 (2).csv")
+loci <- c("B12", "C07", "D12", "D10", "A12", "C03")
 
-# Example Python code
-print('Python environment is ready and operational.')
-")
-# Prepare data and variables
-data_json <- jsonlite::toJSON(data, dataframe = "rows", auto_unbox = TRUE)
-loci_json <- jsonlite::toJSON(loci, auto_unbox = TRUE)
-
-# Save JSON arguments to files if needed
-write(data_json, "data.json")
-write(loci_json, "loci.json")
-
-# Call Python script within LD environment using mamba
-result <- system2(
-  command = "mamba",
-  args = c("run", "-n", "LD", "python", "LD.py", shQuote(data_json), shQuote(loci_json), n_simulations),
-  stdout = TRUE,
-  stderr = TRUE
-)
+# Extract unique populations and loci
+populations <- unique(data$Population)
+# Define loci and locus pairs
+loci_pairs <- combn(loci, 2, simplify = FALSE)
+n_simulations <- as.integer(1000)
 
 # Step 1: Generate contingency tables
 contingency_tables <- create_contingency_tables(data, loci)
@@ -284,13 +274,13 @@ observed_g_stats <- add_g_stats(contingency_tables)
 
 # Step 3: Generate randomized G-stats
 # randomized_g_stats <- generate_randomized_g_stats_parallel(data, loci, n_simulations = 1000)
-randomized_g_stats_PY <- randomized_g_stats <- fromJSON(result)
-randomized_g_stats_PY <- flatten_simulated_stats(randomized_g_stats_PY)
+randomized_g_stats_R <- randomized_g_stats(data, loci, n_simulations, calculate_g_stat)
+
 # Step 4: Calculate p-values
-pvalues <- calculate_pvalues(observed_g_stats, randomized_g_stats_PY)
+pvalues <- calculate_pvalues(observed_g_stats, randomized_g_stats_R)
 
 # Step 5: Calculate global p-values
-global_pvalues <- calculate_global_pvalues(observed_g_stats, randomized_g_stats_PY)
+global_pvalues <- calculate_global_pvalues(observed_g_stats, randomized_g_stats_R)
 
 # Step 6: Create summary table
 summary_table <- create_summary_table(pvalues, global_pvalues)
