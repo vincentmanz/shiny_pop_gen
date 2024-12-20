@@ -46,6 +46,8 @@ begin
 
      i:=0;
      while (i<maxip) do
+
+     // contengency table
      begin
           i:=i+1;
           table[pinpop[il1][ip][i]][pinpop[il2][ip][i]]:=table[pinpop[il1][ip][i]][pinpop[il2][ip][i]]+1;

@@ -1,5 +1,7 @@
 # Load necessary libraries
 library(dplyr)
+library(doParallel)
+library(tidyr)
 
 # Load the dataset
 data <- read.csv("data/data-2023-09-11 (2).csv")
@@ -26,13 +28,27 @@ calculate_g_stat <- function(table) {
 
 # Function to shuffle loci and compute randomized G-statistics
 randomize_and_compute <- function(data, locus1, locus2, n_perms = 1000) {
-  randomized_g_stats <- numeric(n_perms)
-  for (i in 1:n_perms) {
-    shuffled_data <- data
-    shuffled_data[[locus2]] <- sample(shuffled_data[[locus2]])
+  # Setup parallel cluster
+  cl <- makeCluster(detectCores() - 1)
+  registerDoParallel(cl)
+  
+  # Export required functions to workers
+  clusterExport(cl, varlist = c("calculate_g_stat"))
+  
+  # Run parallel randomization
+  randomized_g_stats <- foreach(i = 1:n_perms, .combine = 'c', .packages = c('dplyr')) %dopar% {
+    shuffled_data <- data %>%
+      group_by(Population) %>%
+      mutate(!!locus2 := sample(!!sym(locus2))) %>%
+      ungroup()
+    
     contingency_table <- table(shuffled_data[[locus1]], shuffled_data[[locus2]])
-    randomized_g_stats[i] <- calculate_g_stat(contingency_table)
+    calculate_g_stat(contingency_table)
   }
+  
+  # Stop the cluster
+  stopCluster(cl)
+  
   return(randomized_g_stats)
 }
 
@@ -77,13 +93,19 @@ compute_p_values <- function(data, loci, populations, n_perms = 1000) {
 n_permutations <- 1000
 p_values <- compute_p_values(data, loci, populations, n_perms = n_permutations)
 
-# Save p-values to a CSV file
+# Save p-values to a structured DataFrame
 p_values_df <- do.call(rbind, lapply(names(p_values), function(pop) {
   do.call(rbind, lapply(names(p_values[[pop]]), function(pair) {
     data.frame(Population = pop, LocusPair = pair, PValue = p_values[[pop]][[pair]])
   }))
 }))
-write.csv(p_values_df, "p_values.csv", row.names = FALSE)
 
-# Display the computed p-values
-print(p_values_df)
+# Reshape p-values to the desired format
+reformatted_p_values <- pivot_wider(
+  p_values_df,
+  names_from = Population,
+  values_from = PValue
+)
+
+# Save and print the reformatted table
+print(reformatted_p_values, max.levels = 100, width = 100)
