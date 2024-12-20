@@ -68,7 +68,7 @@ add_g_stats <- function(contingency_tables) {
 }
 
 # Function to calculate p-values
-calculate_pvalues <- function(observed_g_stats, simulated_g_stats, epsilon = 1e-4) {
+calculate_pvalues <- function(observed_g_stats, simulated_g_stats, epsilon = 1e-10) {
   results <- lapply(names(observed_g_stats), function(pop) {
     observed <- observed_g_stats[[pop]]
     simulated <- simulated_g_stats[[pop]]
@@ -149,7 +149,7 @@ randomized_g_stats <- function(data, loci, n_simulations, calculate_g_stat, incl
 # Load data
 data <- read.csv("data/data-2023-09-11 (2).csv")
 loci <- c("B12", "C07", "D12", "D10", "A12", "C03")
-n_simulations <- 10000
+n_simulations <- 100
 
 # User option: include missing data
 include_missing <- TRUE  # Set to FALSE to exclude missing data
