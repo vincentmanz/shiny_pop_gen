@@ -1,0 +1,13 @@
+No STACKS version specified
+B12
+C07
+D12
+D10
+A12
+C03
+Pop
+Boulouparis , 192195 30 30 30 30 30
+Boulouparis , 192195 30 30 30 30 30
+Pop
+Bourail , 192195 30 30 30 30 30
+Bourail , 192195 30 30 30 30 30

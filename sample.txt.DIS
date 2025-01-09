@@ -1,0 +1,97 @@
+Genepop 4.8.2, Genotypic linkage disequilibrium
+
+File: sample.txt (Title line: "Grape populations in southern France")
+
+Number of populations detected : 4
+Number of loci detected        : 6
+
+Markov chain parameters
+	Dememorisation       : 10000
+	Batches              : 100
+	Iterations per batch : 5000
+
+Pop             Locus#1  Locus#2    P-Value      S.E.     Switches
+----------      -------  -------    --------     -------- --------
+Grange des Per  ADH Locu ADH #2     No information
+Grange des Per  ADH Locu ADH thre   1            0.000000    83366
+Grange des Per  ADH #2   ADH thre   No information
+Grange des Per  ADH Locu ADH-4      1.000000     0.000000    52029
+Grange des Per  ADH #2   ADH-4      No information
+Grange des Per  ADH thre ADH-4      1.000000     0.000000    83291
+Grange des Per  ADH Locu ADH-5      1.000000     0.000000    83115
+Grange des Per  ADH #2   ADH-5      No information
+Grange des Per  ADH thre ADH-5      1.000000     0.000000   113926
+Grange des Per  ADH-4    ADH-5      0.196026     0.002462    83173
+Grange des Per  ADH Locu mtDNA      No contingency table
+Grange des Per  ADH #2   mtDNA      No contingency table
+Grange des Per  ADH thre mtDNA      No contingency table
+Grange des Per  ADH-4    mtDNA      No contingency table
+Grange des Per  ADH-5    mtDNA      No contingency table
+Tertre Roteboe  ADH Locu ADH #2     1.000000     0.000000   100061
+Tertre Roteboe  ADH Locu ADH thre   1.000000     0.000000   133573
+Tertre Roteboe  ADH #2   ADH thre   1.000000     0.000000    83212
+Tertre Roteboe  ADH Locu ADH-4      1.000000     0.000000   133801
+Tertre Roteboe  ADH #2   ADH-4      1.000000     0.000000    82982
+Tertre Roteboe  ADH thre ADH-4      0.332724     0.001966   114776
+Tertre Roteboe  ADH Locu ADH-5      1.000000     0.000000   100591
+Tertre Roteboe  ADH #2   ADH-5      1.000000     0.000000    52317
+Tertre Roteboe  ADH thre ADH-5      1.000000     0.000000    83543
+Tertre Roteboe  ADH-4    ADH-5      1.000000     0.000000    83048
+Tertre Roteboe  ADH Locu mtDNA      No contingency table
+Tertre Roteboe  ADH #2   mtDNA      No contingency table
+Tertre Roteboe  ADH thre mtDNA      No contingency table
+Tertre Roteboe  ADH-4    mtDNA      No contingency table
+Tertre Roteboe  ADH-5    mtDNA      No contingency table
+Bonneau 05      ADH Locu ADH #2     1.000000     0.000000   133561
+Bonneau 05      ADH Locu ADH thre   0.598642     0.002204   100309
+Bonneau 05      ADH #2   ADH thre   1.000000     0.000000    82824
+Bonneau 05      ADH Locu ADH-4      1.000000     0.000000   132937
+Bonneau 05      ADH #2   ADH-4      1.000000     0.000000   114409
+Bonneau 05      ADH thre ADH-4      1.000000     0.000000    83111
+Bonneau 05      ADH Locu ADH-5      1.000000     0.000000    99820
+Bonneau 05      ADH #2   ADH-5      1.000000     0.000000   133746
+Bonneau 05      ADH thre ADH-5      1.000000     0.000000    99564
+Bonneau 05      ADH-4    ADH-5      1.000000     0.000000   133180
+Bonneau 05      ADH Locu mtDNA      No contingency table
+Bonneau 05      ADH #2   mtDNA      No contingency table
+Bonneau 05      ADH thre mtDNA      No contingency table
+Bonneau 05      ADH-4    mtDNA      No contingency table
+Bonneau 05      ADH-5    mtDNA      No contingency table
+last pop        ADH Locu ADH #2     No contingency table
+last pop        ADH Locu ADH thre   No contingency table
+last pop        ADH #2   ADH thre   No contingency table
+last pop        ADH Locu ADH-4      No contingency table
+last pop        ADH #2   ADH-4      No contingency table
+last pop        ADH thre ADH-4      No information
+last pop        ADH Locu ADH-5      No contingency table
+last pop        ADH #2   ADH-5      No contingency table
+last pop        ADH thre ADH-5      0.334362     0.000890   166751
+last pop        ADH-4    ADH-5      No information
+last pop        ADH Locu mtDNA      No contingency table
+last pop        ADH #2   mtDNA      No contingency table
+last pop        ADH thre mtDNA      1.000000     0.000000   249952
+last pop        ADH-4    mtDNA      No information
+last pop        ADH-5    mtDNA      1.000000     0.000000   166709
+
+P-value for each locus pair across all populations
+(Fisher's method)
+-----------------------------------------------------
+Locus pair                    Chi2      df   P-Value
+--------------------          --------  ---  --------
+ADH Locus 1   & ADH #2        0.000000  4    1.000000
+ADH Locus 1   & ADH three     1.026183  6    0.984600
+ADH #2        & ADH three     0.000000  4    1.000000
+ADH Locus 1   & ADH-4         0.000000  6    1.000000
+ADH #2        & ADH-4         0.000000  4    1.000000
+ADH three     & ADH-4         2.200884  6    0.900327
+ADH Locus 1   & ADH-5         0.000000  6    1.000000
+ADH #2        & ADH-5         0.000000  4    1.000000
+ADH three     & ADH-5         2.191062  8    0.974587
+ADH-4         & ADH-5         3.259016  6    0.775705
+ADH Locus 1   & mtDNA         Not possible
+ADH #2        & mtDNA         Not possible
+ADH three     & mtDNA         0.000000  2    1.000000
+ADH-4         & mtDNA         Not possible
+ADH-5         & mtDNA         0.000000  2    1.000000
+
+Normal ending.
