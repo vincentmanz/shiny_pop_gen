@@ -90,3 +90,4 @@ test_LD(locinfile,'sample.txt.DIS')
 
 write_LD_tables("GenePop_UNFLATTENED.txt", 'sample.txt.TAB')
 
+

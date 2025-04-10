@@ -45,6 +45,7 @@ sidebar <- dashboardSidebar(
               menuItem("Welcome to GenoPop", tabName = "welcome", icon = icon("home"),  selected=TRUE),
               menuItem("Data import and Filtering", tabName = "data", icon = icon("dashboard")),
               menuItem("General Statsistics", tabName = "general_stats", icon = icon("dashboard")),
+              menuItem("Linkage desequilibrium", tabName = "linkage_desequilibrium", icon = icon("dashboard")),
               menuItem("Genetic Drift", tabName = "drift", icon = icon("dashboard"))
   )
 )
@@ -117,6 +118,11 @@ body <- dashboardBody(
     tabItem(
       tabName = "general_stats",
       general_stats_UI(),
+      icon = icon("cog", lib = "glyphicon")
+    ),
+    tabItem(
+      tabName = "linkage_desequilibrium",
+      linkage_desequilibrium_UI(),
       icon = icon("cog", lib = "glyphicon")
     ),
     tabItem(

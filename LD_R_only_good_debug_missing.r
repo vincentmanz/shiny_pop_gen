@@ -149,7 +149,7 @@ randomized_g_stats <- function(data, loci, n_simulations, calculate_g_stat, incl
 # Load data
 data <- read.csv("data/data-2023-09-11 (2).csv")
 loci <- c("B12", "C07", "D12", "D10", "A12", "C03")
-n_simulations <- 1000
+n_simulations <- 10000
 
 # User option: include missing data
 include_missing <- TRUE  # Set to FALSE to exclude missing data

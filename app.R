@@ -27,19 +27,27 @@ suppressPackageStartupMessages({
   library(plotly)
   library(kableExtra)
   library(ggplot2)
+  
+  # processs
+  library(parallel)
+  library(foreach)
+  library(doParallel)
 })
+
 
 # Source server and UI files
 source("module/server_import_data.R")
 source("module/server_genetic_drift.R")
 source("module/server_general_stats.R")
+source("module/server_LD.R")
+
 
 source("module/ui_import_data.R")
 source("module/ui_genetic_drift.R")
 source("module/ui_general_stats.R")
+source("module/ui_LD.R")
 
 source("www/helper.R")
-
 
 source("module/welcome.R")
 
@@ -56,6 +64,7 @@ server <- function(input, output, session) {
   # Combine server functions from other source files
   server_import_data(input, output, session)
   server_general_stats(input, output, session)
+  server_LD(input, output, session)
   server_genetic_drift(input, output, session)
 }
 
