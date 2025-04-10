@@ -11,7 +11,7 @@
 ################################################################################
 # environment variables
 
-filtered_data <- read.csv("/home/vincent/Documents/shiny_pop_gen/data/data-2023-09-11 (2).csv", header = TRUE)
+filtered_data <- read.csv("~/Documents/project/shiny_app/dev/shiny_pop_gen/data/data-2023-09-11 (2).csv", header = TRUE)
 
 # information inherited from previous page
 n_marker <- 6
