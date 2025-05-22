@@ -1,8 +1,0 @@
-Genepop
-MenuOptions=2:1
-InputFile=population_results/population_1.txt
-Dememorization=1000
-BatchNumber=20
-BatchLength=5000
-OutputFile=population_results/population_1_results.txt
-

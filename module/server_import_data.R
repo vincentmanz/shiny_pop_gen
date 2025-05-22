@@ -5,14 +5,26 @@ source("www/helper.R")
 server_import_data <- function(input, output, session) {
   # Define the reactive expression to hold the data frame
   df <- reactiveVal()
+  uploaded_file <- reactiveVal()
+  # Step 1: Just store the file path when user uploads, don't read yet
+  observeEvent(input$file1, {
+    req(input$file1)
+    uploaded_file(input$file1$datapath)
+  })
+  # Step 2: Read the file only when user clicks 'load_user_data'
+  observeEvent(input$load_user_data, {
+    req(uploaded_file())  # make sure a file is uploaded
+    df(read.csv(uploaded_file(), 
+                header = input$header, 
+                sep = input$sep, 
+                #quote = input$quote
+                ))
+  })
   # Load default data when the button is clicked
   observeEvent(input$load_default_data, {
-    df( read.csv("https://www.t-de-meeus.fr/Enseign/BoophilusAdultsDataCattle.txt", header = input$header, sep = input$sep))
+    df(read.csv("https://www.t-de-meeus.fr/Enseign/BoophilusAdultsDataCattle.txt", header = TRUE, sep = "\t"))
   })
-  # Handle file upload
-  observeEvent(input$file1, {req(input$file1)
-    df(read.csv(input$file1$datapath, header = input$header, sep = input$sep, quote = input$quote))
-  })
+  
   # Handle filtering of data
   observeEvent(input$run_filter, {req(df())
     missing_code <- as.numeric(input$missing_code)
@@ -39,7 +51,11 @@ server_import_data <- function(input, output, session) {
     df_local <- df()
     updateSelectInput(session, 'pop_data', choices = c("select" = "", colnames(df_local)))
     updateSelectInput(session, 'latitude_data',choices = c("select" = "", colnames(df_local)))
-    updateSelectInput(session, 'longitude_data', choices = c("select" = "", colnames(df_local)))
+    updateSelectInput(session, 'longitude_data', choices = c("select" = "", colnames(df_local)))    
+    updateSelectInput(session, 'Level1', choices = c("select" = "", colnames(df_local)))
+    updateSelectInput(session, 'Level2', choices = c("select" = "", colnames(df_local)))
+    updateSelectInput(session, 'Level3', choices = c("select" = "", colnames(df_local)))
+
   })
   
   # Render info boxes default
@@ -176,10 +192,15 @@ server_import_data <- function(input, output, session) {
         shinyalert(title = "Error", text = "Longitude should be numerical, select another column or check your data.", type = "error")
         return()  # Exit the event handler
       }
-      # Filter columns to keep in the new data frame
-      cols_to_keep <- c(input$pop_data,input$latitude_data,input$longitude_data,column_range_name)
-      new_df <- df_local[, cols_to_keep]
       
+      
+      # Filter columns to keep in the new data frame
+      # Get selected levels, remove empty selections
+      selected_levels <- c(input$Level1, input$Level2, input$Level3)
+      selected_levels <- selected_levels[selected_levels != ""]  # keep only non-empty
+      cols_to_keep <- c(input$pop_data,input$latitude_data,input$longitude_data,column_range_name,selected_levels)
+      new_df <- df_local[, cols_to_keep]
+      print(new_df)
       # Rename columns
       col_names <- colnames(new_df)
       col_names[1] <- "Population"

@@ -60,7 +60,7 @@ server_LD <- function(input, output, session) {
   # Output: Download CSV
   output$download_gstats_csv <- downloadHandler(
     filename = function() {
-      paste("summary_table", Sys.Date(), ".csv", sep = "")
+      paste("LD_between_each_pair_", Sys.Date(), ".csv", sep = "")
     },
     content = function(file) {
       req(summary_table_reactive())

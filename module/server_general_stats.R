@@ -3,7 +3,7 @@
 # to do list:
 # - add level1 as a reactive value
 # - add a dropdown menu to select the level1
-# - make a progression calculation window for the bootstrap
+# - make a progression calculation window for the bootstrap - done
 # - the environment variable reactive between all the modules
 # - zoom in the plot: https://stackoverflow.com/questions/76591841/expand-plotly-output-in-quarto-html-document-to-full-screen
 #  plot_ly(x = diamonds$cut) |>
@@ -174,7 +174,7 @@ server_general_stats <- function(input, output, session) {
     # Downloadable png of the selected plot ----
     output$download_plot_png <- downloadHandler(
       filename = function() {
-        "plot_heatmap_missing.png"
+        paste("plot_heatmap_missing_data_", Sys.Date(), ".png")
       },
       content = function(file) {
         ggsave(filename = file, plot = heatmap_missing, dpi = 300)
@@ -200,7 +200,7 @@ server_general_stats <- function(input, output, session) {
     # Downloadable png of the selected plot ----
     output$download_plot_png <- downloadHandler(
       filename = function() {
-        "plot_GST.png"
+        paste("plot_GST_", Sys.Date(), ".png")
       },
       content = function(file) {
         ggsave(filename = file, plot = plot_GST, dpi = 300)
@@ -238,7 +238,7 @@ server_general_stats <- function(input, output, session) {
     # Downloadable png of the selected plot ----
     output$download_plot_png <- downloadHandler(
       filename = function() {
-        "plot_FIS.png"
+        paste("plot_FIS_", Sys.Date(),  ".png")
       },
       content = function(file) {
         ggsave(filename = file, plot = plot_FIS, dpi = 300)
@@ -300,7 +300,7 @@ server_general_stats <- function(input, output, session) {
     # Downloadable csv of selected dataset
     output$download_panmixia_csv <- downloadHandler(
       filename = function() {
-        paste("panmixia_stats_result", ".csv", sep = "")
+        paste("panmixia_stats_result_", Sys.Date(),  "_.csv", sep = "")
       },
       content = function(file) {
         write.csv(boot_mat_strat_CI, file, row.names = TRUE)
@@ -329,7 +329,7 @@ server_general_stats <- function(input, output, session) {
     # Downloadable csv of selected dataset
     output$download_panmixia_boot_plot <- downloadHandler(
       filename = function() {
-        "panmixia_plot.png"
+        paste("panmixia_plot_", Sys.Date(),  ".png")
       },
       content = function(file) {
         ggsave(filename = file, plot = panmixia_plot, dpi = 300)
