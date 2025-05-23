@@ -198,9 +198,10 @@ server_import_data <- function(input, output, session) {
       # Get selected levels, remove empty selections
       selected_levels <- c(input$Level1, input$Level2, input$Level3)
       selected_levels <- selected_levels[selected_levels != ""]  # keep only non-empty
-      cols_to_keep <- c(input$pop_data,input$latitude_data,input$longitude_data,column_range_name,selected_levels)
+      cols_to_keep <- c(input$pop_data,input$latitude_data,input$longitude_data,selected_levels, column_range_name)
       new_df <- df_local[, cols_to_keep]
-      print(new_df)
+      print(rownames(new_df))
+      
       # Rename columns
       col_names <- colnames(new_df)
       col_names[1] <- "Population"
