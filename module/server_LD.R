@@ -1,3 +1,8 @@
+#####
+# To do list:
+  
+
+####
 library(dplyr)
 library(parallel)
 library(foreach)

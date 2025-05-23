@@ -1,9 +1,9 @@
 # server_general_stats.R
 ################################################################################
 # to do list:
-# - add level1 as a reactive value
+# - add the name of the population in the table output. 
+# - add level1 as a reactive value and in the algo
 # - add a dropdown menu to select the level1
-# - make a progression calculation window for the bootstrap - done
 # - the environment variable reactive between all the modules
 # - zoom in the plot: https://stackoverflow.com/questions/76591841/expand-plotly-output-in-quarto-html-document-to-full-screen
 #  plot_ly(x = diamonds$cut) |>
@@ -11,7 +11,7 @@
 ################################################################################
 # environment variables
 
-filtered_data <- read.csv("~/Documents/project/shiny_app/dev/shiny_pop_gen/data/data-2023-09-11 (2).csv", header = TRUE)
+filtered_data <- read.csv("~/Documents/shiny_pop_gen/data/data-2023-09-11 (2).csv", header = TRUE)
 
 # information inherited from previous page
 n_marker <- 6
