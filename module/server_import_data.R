@@ -1,6 +1,8 @@
 # server_import_data.R
 
-
+###
+# To do list
+# - to do make write a csv file on the disk after import and read in the other tabs. 
 
 source("www/helper.R")
 

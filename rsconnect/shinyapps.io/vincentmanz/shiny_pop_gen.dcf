@@ -5,7 +5,7 @@ account: vincentmanz
 server: shinyapps.io
 hostUrl: https://api.shinyapps.io/v1
 appId: 9837629
-bundleId: 8363546
+bundleId: 10328886
 url: https://vincentmanz.shinyapps.io/shiny_pop_gen/
 version: 1
 asMultiple: FALSE
