@@ -3,13 +3,13 @@
 ###
 # To do list
 # - to do make write a csv file on the disk after import and read in the other tabs. 
-
 source("www/helper.R")
 
 server_import_data <- function(input, output, session) {
   # Define the reactive expression to hold the data frame
   df <- reactiveVal()
   uploaded_file <- reactiveVal()
+
   # Step 1: Just store the file path when user uploads, don't read yet
   observeEvent(input$file1, {
     req(input$file1)
@@ -18,15 +18,12 @@ server_import_data <- function(input, output, session) {
   # Step 2: Read the file only when user clicks 'load_user_data'
   observeEvent(input$load_user_data, {
     req(uploaded_file())  # make sure a file is uploaded
-    df(read.csv(uploaded_file(), 
-                header = input$header, 
-                sep = input$sep, 
-                #quote = input$quote
-                ))
+    df(read.csv(uploaded_file(), header = input$header, sep = input$sep))
   })
+
   # Load default data when the button is clicked
   observeEvent(input$load_default_data, {
-    df(read.csv("https://www.t-de-meeus.fr/Enseign/BoophilusAdultsDataCattle.txt", header = TRUE, sep = "\t"))
+    df(read.csv("data/BoophilusAdultsDataCattle.csv", header = TRUE, sep = "\t"))
   })
   
   # Handle filtering of data
@@ -55,11 +52,11 @@ server_import_data <- function(input, output, session) {
     df_local <- df()
     updateSelectInput(session, 'pop_data', choices = c("select" = "", colnames(df_local)))
     updateSelectInput(session, 'latitude_data',choices = c("select" = "", colnames(df_local)))
-    updateSelectInput(session, 'longitude_data', choices = c("select" = "", colnames(df_local)))    
+    updateSelectInput(session, 'longitude_data', choices = c("select" = "", colnames(df_local))) 
+     
     updateSelectInput(session, 'Level1', choices = c("select" = "", colnames(df_local)))
     updateSelectInput(session, 'Level2', choices = c("select" = "", colnames(df_local)))
     updateSelectInput(session, 'Level3', choices = c("select" = "", colnames(df_local)))
-
   })
   
   # Render info boxes default
@@ -70,6 +67,7 @@ server_import_data <- function(input, output, session) {
   
   # Display  the loaded data frame 
   output$contents <- renderTable({ req(df())})
+
   # Display  an empty map world
   output$map <- renderLeaflet({leaflet() %>% addTiles()})
   
@@ -79,7 +77,7 @@ server_import_data <- function(input, output, session) {
       paste("data-", Sys.Date(), ".csv", sep = "")
     },
     content = function(file) {
-      write.csv(df(), file)  # df() should be the data you want to download
+      write.csv(df(), file)
     }
   )
   
@@ -97,15 +95,18 @@ server_import_data <- function(input, output, session) {
     ## Check if Population has data
     if (input$pop_data == "") {shinyalert(title = "Error",text = "You need to select populations.",type = "error")
       return()  # Exit the event handler
-    }    
+    }  
+
     # Check if Code for missing data has data
     if (input$missing_code == "") {shinyalert(title = "Error",text = "You need to fill the value for missing data.",type = "error")
       return()  # Exit the event handler
     }
+
     # Check if Marker Range has data
     if (input$col_ranges_data == "") {shinyalert(title = "Error",text = "You need to select a marker range.",type = "error")
       return()  # Exit the event handler
     }
+    
     # Check if the range is valid
     range_values <- unlist(strsplit(input$col_ranges_data, "[:-]"))
     range_values <- as.numeric(range_values)
@@ -174,7 +175,6 @@ server_import_data <- function(input, output, session) {
         # Render the actual results table
         output$results_table <- renderTable({ results_table})
         
-        
         # Render info boxes
         output$box_population <- renderInfoBox({renderInfoBoxUI("Population", number_pop, "map-location-dot", "purple")})
         output$box_individuals <- renderInfoBox({renderInfoBoxUI("Individuals", number_indv, "people-group", "green")})
@@ -196,8 +196,7 @@ server_import_data <- function(input, output, session) {
         shinyalert(title = "Error", text = "Longitude should be numerical, select another column or check your data.", type = "error")
         return()  # Exit the event handler
       }
-      
-      
+
       # Filter columns to keep in the new data frame
       # Get selected levels, remove empty selections
       selected_levels <- c(input$Level1, input$Level2, input$Level3)
@@ -213,6 +212,7 @@ server_import_data <- function(input, output, session) {
       col_names[3] <- "Longitude"
       col_names[4:(3 + length(column_range_name))] <- column_range_name
       colnames(new_df) <- col_names
+      
       # Convert selected columns to numeric
       cols_to_convert <-
         col_names[which(col_names %in% c("Latitude", "Longitude", col_names[4:(3 + length(range_values))]))]
@@ -247,7 +247,7 @@ server_import_data <- function(input, output, session) {
         # Count the number of selected columns in col_ranges_data
         number_marker <- length(df_range_cols_markers)
         
-        # Render the results table using renderUI                                # check necessity?
+        # Render the results table using renderUI
         output$results_table_ui <- renderUI({
           tableOutput("results_table")
         })
@@ -267,19 +267,20 @@ server_import_data <- function(input, output, session) {
         # Update df_assigned with new_df
         df(new_df)
       }
+
       ##### MAP ####
       # Create the populationsLL data frame
       populationsLL <- new_df[, 1:3]
       # Group by Locality, Latitude, and Longitude, and calculate Population Size
       populationsLL_grouped <- populationsLL %>%
         group_by_all() %>% count()
-      colnames(populationsLL_grouped) <-
-        c('Population', 'Longitude', 'Latitude', 'Population size')
+      colnames(populationsLL_grouped) <- c('Population', 'Longitude', 'Latitude', 'Population size')
       # Render the populationsLL_uniq data frame as a table
       output$populationsLL_uniq_table <- renderTable({
         req(input$run_map)  # Show the table after clicking "Run Map" button
         populationsLL_grouped
       })
+
       # Render the map
       output$map <- renderLeaflet({
         leaflet(populationsLL_grouped) %>%
@@ -299,19 +300,10 @@ server_import_data <- function(input, output, session) {
             fillOpacity = 0.5
           )
       })
+      
       print(head(new_df))
       
       write.csv(new_df, file = "data/filtered_data.csv")
-      # Download map handler
-      #      output$download_map <-  downloadHandler(
-      #        filename = function() {
-      #          paste("map-", Sys.Date(), ".pdf")},
-      #        content = function(file) {
-      #          pdf(file, width = 8, height = 6)  # Adjust the width and height as needed
-      #          print(output$map)  # Print the map to the PDF
-      #          dev.off()  # Close the PDF device
-      #       }
-      #      )
     }
   })
 }

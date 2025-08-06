@@ -1,17 +1,11 @@
 # ui_import_data.R
 
-#customDownloadbutton <- function(outputId, label = ""){
-#  tags$a(id = outputId, class = "btn btn-default shiny-download-link", href = paste("data-", Sys.Date(), ".csv", sep = "\t"), 
-#         target = "contents", download = NA, icon("download"), label)
-#}
-
 generateImportDataUI <- function() {
   fluidPage(
     fluidRow(
       box(
-        width = 2,
-        title = "Data Import and Structure",
-        status = "primary",
+        width = 3,
+        title = div(style = "background-color: #756bb1; padding: 10px; color: black;", "Data Import and Structure"),
         solidHeader = TRUE,
         h3("1. Import Data"),
         fileInput("file1", "Choose CSV File",
@@ -27,7 +21,6 @@ generateImportDataUI <- function() {
                      selected = "\t"),
         actionButton("load_user_data", "Load Data", icon = icon("rocket")),        
         br(), br(),
-
         actionButton("load_default_data", "Load Default Data"),
         tableOutput("preview"),
         br(), br(), tags$hr(), br(),
@@ -57,37 +50,36 @@ generateImportDataUI <- function() {
         footer = "* mandatory fields"
       ),
       mainPanel(
-        infoBoxOutput("box_population", width = 3),
-        infoBoxOutput("box_individuals", width = 3),
-        infoBoxOutput("box_marker", width = 3),
-        infoBoxOutput("box_number_missing_per", width = 3)
+        infoBoxOutput("box_population", width = 6),
+        infoBoxOutput("box_individuals", width = 6),
+        infoBoxOutput("box_marker", width = 6),
+        infoBoxOutput("box_number_missing_per", width = 6)
       ),
       box(
         title = "Data",
-        status = "primary",
         solidHeader = TRUE,
         height = "2000",
-        width = 10,  
+        width = 9,  
         tagList(
-          # Wrap the table in a div with scrollable styles
           div(style = "height:500px; overflow-y: scroll; overflow-x: scroll;",
               tableOutput("contents")
           ),
-          
-          ## DOWNLOAD
-          downloadButton("download_csv", ""),
+          br(),
+          downloadButton("download_csv", "Download", class = "btn btn-primary"),
           tableOutput("populationsLL_uniq_table")
         )
       ),
       box(
-        width = 10,
+        width = 9,
         title = "Map",
-        status = "primary",
         solidHeader = TRUE,
-        leafletOutput("map",
-                      height = "800px")
-        ## DOWNLOAD
-#        downloadButton("download_map", "Download"),
+        tagList(
+          div(style = "overflow-y: scroll; overflow-x: scroll;",
+              leafletOutput("map")
+          ),
+          br(),
+          downloadButton("download_map", "Download")
+        )
       )
     )
   )

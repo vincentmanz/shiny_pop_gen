@@ -3,12 +3,11 @@
 general_stats_UI <- function() {
   fluidPage(
     useWaiter(),
-    #use_hostess(),
     fluidRow(
       box(
-        width = 2,
-        title = "Basic diversity and differentiation statistics",
-        status = "primary",
+        width = 3,
+        title = div(style = "background-color: #756bb1; padding: 10px; color: black;", "Basic diversity and differentiation statistics"),
+        selectInput("Level", "Level", choices = NULL),
         h4("Select indices"),
         solidHeader = TRUE,
         checkboxInput("ho_checkbox", "Ho", TRUE),
@@ -19,41 +18,38 @@ general_stats_UI <- function() {
         checkboxInput("fst_wc_checkbox", "Fst (W&C)", TRUE),
         checkboxInput("fis_n_checkbox", "Fis (Nei)", TRUE),
         checkboxInput("fst_n_checkbox", "Fst (Nei)", TRUE),
+        checkboxInput("fst_max_checkbox", "Fst-max", FALSE),
+        checkboxInput("fst_prim_checkbox", "Fst'", FALSE),
         checkboxInput("GST_checkbox", "GST", FALSE),
         checkboxInput("GST_sec_checkbox", "GST''", FALSE),
         tags$hr(),
         actionButton("run_basic_stats", "Run", icon = icon("rocket"))
       ),
+      # Ajouter des niveaux
       box(
-        width = 10,
-        title = "General statistics",
-        status = "primary",
+        width = 9,
+        title = div(style = "background-color: #756bb1; padding: 10px; color: black;", "General statistics"),
         solidHeader = TRUE,
-        ## DOWNLOAD
-        downloadButton("download_gstats_csv", "Download CSV"),
-        # Display the table here
-        tableOutput("basic_stats_result")
+        uiOutput("basic_stats_ui"),
+        style = "overflow-y: auto;"
       )
     ),
     fluidRow(
       box(
         title = "Heatmap",
         width = 4,
-        status = "primary",
         solidHeader = TRUE,
         actionButton("run_plot_heatmap", "Heatmap")
       ),
       box(
         title = "GST",
         width = 4,
-        status = "primary",
         solidHeader = TRUE,
         actionButton("run_plot_GST", "GST")
       ),
       box(
         title = "FIS",
         width = 4,
-        status = "primary",
         solidHeader = TRUE,
         actionButton("run_plot_FIS", "FIS")
       )
@@ -62,19 +58,16 @@ general_stats_UI <- function() {
       box(
         width = 12,
         title = "Plot result",
-        status = "primary",
         solidHeader = TRUE,
-        ## DOWNLOAD
-        downloadButton("download_plot_png", "Download"),
-        # Display the plot using the reactive expression
-        plotOutput("plot_output")
+        plotOutput("plot_output"),
+        br(),
+        downloadButton("download_plot_png", "Download")
       )
     ),
     fluidRow(
       box(
         width = 4,
         title = "Panmixia",
-        status = "primary",
         solidHeader = TRUE,
         numericInput("numboot", "Number of bootstrap replicates", value = 1000, max = 10000),
         textInput("level1", "Population unit", value = "Population"),
@@ -83,24 +76,19 @@ general_stats_UI <- function() {
       box(
         width = 8,
         title = "Panmixia tabulation",
-        status = "primary",
         solidHeader = TRUE,
-        ## DOWNLOAD
-        downloadButton("download_panmixia_csv", "Download CSV"),
-        # Display the plot
-        tableOutput("panmixia_boot_result")
+        tableOutput("panmixia_boot_result"),
+        downloadButton("download_panmixia_csv", "Download CSV", class = "btn btn-primary")
       )
     ),
     fluidRow(
       box(
         width = 12,
         title = "Plot Panmixia",
-        status = "primary",
         solidHeader = TRUE,
-        ## DOWNLOAD
-        downloadButton("download_panmixia_boot_plot", "Download png"),
-        # Display the plot using the reactive expression
-        plotOutput("panmixia_boot_plot")
+        plotOutput("panmixia_boot_plot"),
+        br(),
+        downloadButton("download_panmixia_boot_plot", "Download png")
       )
     )
   )

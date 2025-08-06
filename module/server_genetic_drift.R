@@ -1,7 +1,6 @@
 server_genetic_drift <- function(input, output, session) {
   
   ##### Genetic drift ####
-  
   simulation <- eventReactive(input$go, {
     ## generate allele frequencies
     ##
@@ -104,7 +103,6 @@ server_genetic_drift <- function(input, output, session) {
       pull(p) %>%
       str_c(collapse = ",") %>%
       cat()
-    
   })
   
   output$copy2 <- renderPrint({
@@ -116,7 +114,6 @@ server_genetic_drift <- function(input, output, session) {
       pull(t) %>%
       str_c(collapse = ",") %>%
       cat()
-    
   })
   
 }

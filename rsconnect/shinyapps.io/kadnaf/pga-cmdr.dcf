@@ -1,0 +1,10 @@
+name: pga-cmdr
+title:
+username: kadnaf
+account: kadnaf
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 15147213
+bundleId: 10707195
+url: https://kadnaf.shinyapps.io/pga-cmdr/
+version: 1

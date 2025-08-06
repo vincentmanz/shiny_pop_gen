@@ -1,17 +1,8 @@
 # server_general_stats.R
-################################################################################
-# to do list:
-# - add the name of the population in the table output. 
-# - add level1 as a reactive value and in the algo
-# - add a drop down menu to select the level1
-# - the environment variable reactive between all the modules
-# - zoom in the plot: https://stackoverflow.com/questions/76591841/expand-plotly-output-in-quarto-html-document-to-full-screen
-#  plot_ly(x = diamonds$cut) |>
-#  bslib::card(full_screen = TRUE)
-################################################################################
-# environment variables
 
-filtered_data <- read.csv("data/data-2023-09-11 (2).csv", header = TRUE)
+# environment variables
+filtered_data <- read.csv("data/data-2023-09-11.csv", header = TRUE)
+# Chemin metadata
 
 # information inherited from previous page
 n_marker <- 6
@@ -22,44 +13,88 @@ sequence_length <- length(marker_start:marker_end)
 
 n_indv <- nrow(filtered_data)
 pops <- unique(filtered_data$Population)
-## Specify the number of cores available
 num_cores <- parallel::detectCores()
-## Code for missing data
 missing_data_code <- "0/0"
-## genotype columns
 column_genotype_start <- 6
 column_genotype_end <- 11
-
-# Specify the number of bootstrap replicates
 R <- 1000
-# Specify the number of replicates (HW-Panmixia)
 n_rep <- 1000
 
-# selected_stats <-
-#   c("Ho", "Hs", "Ht", "Fis (W&C)", "Fst (W&C)", "Fis (Nei)", "Fst (Nei)", "GST")
-
-################################################################################
 # Define the server logic
 server_general_stats <- function(input, output, session) {
-  # General stats reactive value
+  # Reactive values
   result_stats_reactive <- reactiveVal(NULL)
-  # Missing data reactive value
   missing_data_reac <- reactiveVal(NULL)
-  # Filtered data formated
   filtered_data_reac <- reactiveVal(NULL)
-  # store the plot reactive values
   plot_output <- reactiveValues()
-  # mydata_genind reactive value
   mydata_genind_reac <- reactiveVal(NULL)
-  # mydata_hierfstat reactive value
   mydata_hierfstat_reac <- reactiveVal(NULL)
+  result_stats_download <- reactiveVal(NULL)
+  panmixia_boot_download <- reactiveVal(NULL)
+
+  # Update the select input choices
+  updateSelectInput(session, 'Level', choices = c("select" = "", colnames(filtered_data)))
+  
+  # Fonction de recodage robuste pour FST-max
+  recode_for_fstmax <- function(hierfstat_data) {
+    pops <- unique(hierfstat_data[,1])
+    loci <- colnames(hierfstat_data)[-1]
+    new_data <- hierfstat_data
+    
+    allele_counter <- 1
+    
+    for(pop in pops) {
+      pop_rows <- which(hierfstat_data[,1] == pop)
+      
+      for(loc in loci) {
+        # Extraire les génotypes pour cette population et ce locus
+        genotypes <- hierfstat_data[pop_rows, loc]
+        
+        # Identifier tous les allèles uniques (en gérant correctement les NA et "0/0")
+        alleles <- unique(unlist(strsplit(as.character(na.omit(genotypes[genotypes != "0/0"])), "/")))
+        alleles <- alleles[!is.na(alleles) & alleles != "0"]
+        
+        if(length(alleles) > 0) {
+          # Trier numériquement les allèles
+          alleles <- sort(as.numeric(alleles))
+          
+          # Créer un mapping des allèles originaux vers les nouveaux codes
+          allele_map <- setNames(
+            sprintf("%03d", allele_counter:(allele_counter + length(alleles) - 1)),
+            as.character(alleles)
+          )
+          allele_counter <- allele_counter + length(alleles)
+          
+          # Appliquer le recodage
+          for(i in pop_rows) {
+            current_gt <- as.character(hierfstat_data[i, loc])
+            if(!is.na(current_gt) && current_gt != "0/0") {
+              gt_alleles <- strsplit(current_gt, "/")[[1]]
+              new_gt <- paste(allele_map[gt_alleles], collapse = "/")
+              new_data[i, loc] <- new_gt
+            }
+          }
+        }
+      }
+    }
+    
+    # Convertir en numérique (en gérant correctement les valeurs manquantes)
+    for(loc in loci) {
+      # Remplacer "0/0" par NA avant conversion
+      new_data[,loc] <- ifelse(new_data[,loc] == "0/0", NA, new_data[,loc])
+      # Supprimer les "/" et convertir en numérique
+      new_data[,loc] <- suppressWarnings(as.numeric(gsub("/", "", new_data[,loc])))
+    }
+    
+    return(new_data)
+  }
 
   ## Create genind object
   filtered_data <- data.frame(indv = paste(substr(filtered_data$Population, 1, 3), row.names(filtered_data), sep = "."), filtered_data)
   filtered_data_reac(filtered_data)
 
   # Compute genind object
-  mydata_genind <- df2genind(X = filtered_data[, column_genotype_start:column_genotype_end], sep = "/", ncode = 6, ind.names = filtered_data$indv, pop = filtered_data$Population, NA.char = "NA", ploidy = 2, type = "codom", strata = NULL, hierarchy = NULL) # nolint: line_length_linter.
+  mydata_genind <- df2genind(X = filtered_data[, column_genotype_start:column_genotype_end], sep = "/", ncode = 6, ind.names = filtered_data$indv, pop = filtered_data$Population, NA.char = "NA", ploidy = 2, type = "codom", strata = NULL, hierarchy = NULL)
   mydata_genind_reac(mydata_genind)
 
   # Compute hierfstat object
@@ -70,11 +105,11 @@ server_general_stats <- function(input, output, session) {
   mydata_genind <- df2genind(X = filtered_data[, column_genotype_start:column_genotype_end], sep = "/", ncode = 6, ind.names = filtered_data$indv, pop = filtered_data$Population, NA.char = "0/0", ploidy = 2, type = "codom", strata = NULL, hierarchy = NULL)
   missing_data <- info_table(mydata_genind, plot = FALSE, percent = TRUE, df = TRUE)
   missing_data <- as.data.frame(missing_data) %>% spread(key = Locus, value = Missing)
-  missing_data <- missing_data %>% column_to_rownames(var = "Population") ### !! alphabetically ordered index
+  missing_data <- missing_data %>% column_to_rownames(var = "Population")
   missing_data <- missing_data * 100
   missing_data_reac(missing_data)
 
-  # Observe Event for Running the basic.stats and render the results
+  # Observe Event for Running the basic.stats
   observeEvent(input$run_basic_stats, {
     # Retrieve reactive value
     mydata_hierfstat_a <- mydata_hierfstat_reac()
@@ -90,64 +125,154 @@ server_general_stats <- function(input, output, session) {
       "Fst (W&C)" = input$fst_wc_checkbox,
       "Fis (Nei)" = input$fis_n_checkbox,
       "Fst (Nei)" = input$fst_n_checkbox,
+      "Fst-max" = input$fst_max_checkbox,
+      "Fst'" = input$fst_prim_checkbox,
       "GST" = input$GST_checkbox,
       "GST''" = input$GST_sec_checkbox
     )
 
     # Check if any statistics are selected
     if (!any(selected_stats)) {
-      # Show a shinyalert message if no statistics are selected
       shinyalert(
         title = "No Statistics Selected",
         text = "Please select at least one statistic to compute.",
         type = "warning"
       )
-
-      # Stop execution of the rest of the code
       return(NULL)
     }
 
-    # Compute Nei diversity
-    result <- basic.stats(mydata_hierfstat_a) # hierfstat
-    df_resutl_basic <- as.data.frame(result$perloc)
+    # Compute basic stats
+    result <- basic.stats(mydata_hierfstat_a)
+    df_result_basic <- as.data.frame(result$perloc)
 
-    # Compute Weir and Cockrham estimates of F-statistics - FIS and FST
+    # Compute Weir and Cockerham F-statistics
     data <- as.data.frame(as.loci(mydata_genind_a))
-    result_f_stats <- Fst(as.loci(data)) # pegas
+    result_f_stats <- Fst(as.loci(data))
     colnames(result_f_stats) <- c("Fit (W&C)", "Fst (W&C)", "Fis (W&C)")
 
-    # Compute the Gstats
-    df_resutl_basic <- df_resutl_basic %>% mutate(
+    # Compute G statistics
+    df_result_basic <- df_result_basic %>% mutate(
       GST = 1 - Hs / Ht,
       `GST''` = (n_pop * (Ht - Hs)) / ((n_pop * Hs - Ht) * (1 - Hs))
     )
 
-    # Merge the stats and formatting the output table
-    result_stats <- merge(result_f_stats, df_resutl_basic, by = "row.names", all.x = TRUE)
+    # Compute FST-max if requested
+    if(input$fst_max_checkbox) {
+      tryCatch({
+        # Recode alleles for FST-max
+        mydata_hierfstat_recoded <- recode_for_fstmax(mydata_hierfstat_a)
+        
+        # Calculate basic stats on recoded data
+        result_fstmax <- basic.stats(mydata_hierfstat_recoded)
+        
+        # Add FST-max to results
+        df_result_basic$`Fst-max` <- result_fstmax$perloc$Fst
+        
+        # Verify FST-max > FST standard
+        if(any(df_result_basic$`Fst-max` < df_result_basic$`Fst (W&C)`, na.rm = TRUE)) {
+          showNotification(
+            "Warning: Some FST-max values are lower than FST (W&C). Check allele recoding.",
+            type = "warning"
+          )
+        }
+      }, error = function(e) {
+        showNotification(paste("Error in FST-max calculation:", e$message), type = "error")
+        df_result_basic$`Fst-max` <- NA
+      })
+    }
+
+    # Compute Fst' (Fst/Fst-max) if requested
+    if(input$fst_prim_checkbox) {
+      # Check if required columns exist
+      required_cols <- c("Fst (W&C)", "Fst-max")
+      missing_cols <- setdiff(required_cols, colnames(df_result_basic))
+  
+      if(length(missing_cols) > 0) {
+        showNotification(paste("Required columns missing for Fst' calculation:", paste(missing_cols, collapse = ", "), "Please calculate these statistics first."), type = "error")
+        df_result_basic$`Fst'` <- NA
+      } else if(all(is.na(df_result_basic$`Fst-max`))) {
+        showNotification("Fst-max values are all NA. Please check Fst-max calculation.", type = "error")
+        df_result_basic$`Fst'` <- NA
+      } else {
+        tryCatch({
+          # Calculate Fst' = Fst / Fst-max
+          df_result_basic$`Fst'` <- df_result_basic$`Fst (W&C)` / df_result_basic$`Fst-max`
+      
+          # Ensure values are between 0 and 1
+          df_result_basic$`Fst'` <- pmin(pmax(df_result_basic$`Fst'`, 0, na.rm = TRUE), 1, na.rm = TRUE)
+      
+          # Check for potential issues
+          if(any(df_result_basic$`Fst'` > 1.1, na.rm = TRUE)) {
+            showNotification("Warning: Some Fst' values are >1.1. Check Fst and Fst-max calculations.", type = "warning")
+          }
+      
+          # Additional checks
+          issues <- list()
+          if(any(df_result_basic$`Fst'` < 0, na.rm = TRUE)) {
+            issues <- c(issues, "negative values")
+          }
+          if(any(is.nan(df_result_basic$`Fst'`), na.rm = TRUE)) {
+            issues <- c(issues, "NaN values")
+          }
+          if(any(is.infinite(df_result_basic$`Fst'`), na.rm = TRUE)) {
+            issues <- c(issues, "infinite values")
+          }
+      
+          if(length(issues) > 0) {
+            showNotification(paste("Potential issues detected:", paste(issues, collapse = ", ")), type = "warning")
+            # Replace problematic values with NA
+            df_result_basic$`Fst'`[df_result_basic$`Fst'` < 0 | is.nan(df_result_basic$`Fst'`) | is.infinite(df_result_basic$`Fst'`)] <- NA
+          }
+        }, error = function(e) {
+          showNotification(paste("Error in Fst' calculation:", e$message), type = "error")
+          df_result_basic$`Fst'` <- NA
+        })
+      }
+    }
+
+    # Merge all results
+    result_stats <- merge(result_f_stats, df_result_basic, by = "row.names", all.x = TRUE)
     colnames(result_stats)[11:12] <- c("Fst (Nei)", "Fis (Nei)")
     rownames(result_stats) <- result_stats[, 1]
     result_stats <- result_stats[, -1]
     result_stats_reactive(result_stats)
 
-    # Select the required columns
+    # Prepare final table for display
     result_stats_select <- result_stats[, names(selected_stats)[selected_stats], drop = FALSE]
+    result_stats_select$Locus <- rownames(result_stats_select)
+    result_stats_select <- result_stats_select[, c("Locus", names(result_stats_select)[names(result_stats_select) != "Locus"])]
 
-    # Render the result
+    result_stats_download(result_stats_select)
+
     output$basic_stats_result <- renderTable({
-      req(result_stats_select)
-      result_stats_select
+      req(result_stats_download())
+      result_stats_download()
     })
 
-    # Downloadable csv of selected dataset
-    output$download_gstats_csv <- downloadHandler(
-      filename = function() {
-        paste("basic_stats_result", ".csv", sep = "")
-      },
-      content = function(file) {
-        write.csv(result_stats_select, file, row.names = TRUE)
+    output$basic_stats_ui <- renderUI({
+      if (is.null(result_stats_download())) {
+        h5("Run the analysis first to display results.")
+      } else {
+        tagList(
+          tableOutput("basic_stats_result"),
+          br(),
+          downloadButton("download_gstats_csv", "Download CSV", class = "btn btn-primary")
+        )
       }
-    )
+    })
   })
+
+  # Basic stats download
+  output$download_gstats_csv <- downloadHandler(
+    filename = function() {
+      paste0("basic_stats_result_", Sys.Date(), ".csv")
+    },
+    content = function(file) {
+      req(result_stats_download())
+      write.csv(result_stats_download(), file, row.names = FALSE)
+    }
+  )
+
   # Observe Event for handling the plot generation
   observeEvent(input$run_plot_heatmap, {
     # Retrieve reactive value
@@ -160,18 +285,26 @@ server_general_stats <- function(input, output, session) {
     ## Melt the data for ggplot2
     heatmap_data_melted <- melt(missing_data, value.name = "location")
     colnames(heatmap_data_melted) <- c("location", "marker", "percent")
-
-    # Generate the heatmap plot
+    
     heatmap_missing <- ggplot(data = heatmap_data_melted, aes(x = location, y = marker, fill = percent)) +
-      geom_tile() +
-      labs(x = "Column Names", y = "Row Names", fill = "Value") +
-      theme(axis.text.x = element_text(angle = 90, hjust = 1)) # Rotate x-axis labels for better visibility
+      geom_tile(color = "white") +
+      scale_fill_gradient(low = "#D6EAF8", high = "#1F618D", name = "Missing data (%)") +
+      labs(title = "Distribution of Missing Data by Population and Genetic Marker",
+      x = "Population", 
+      y = "Genetic Marker") +
+      theme_minimal(base_size = 14) +
+      theme(
+        plot.title = element_text(hjust = 0.5, face = "bold", size = 16),
+        axis.text.x = element_text(angle = 45, hjust = 1, size = 12),
+        axis.text.y = element_text(size = 12),
+        axis.title.x = element_text(face = "bold", size = 13),
+        axis.title.y = element_text(face = "bold", size = 13))
 
     output$plot_output <- renderPlot({
       heatmap_missing
     })
-
-    # Downloadable png of the selected plot ----
+    
+    # Downloadable png of the selected plot
     output$download_plot_png <- downloadHandler(
       filename = function() {
         paste("plot_heatmap_missing_data_", Sys.Date(), ".png")
@@ -187,17 +320,19 @@ server_general_stats <- function(input, output, session) {
     # Retrieve reactive values
     result_stats <- result_stats_reactive()
 
-    # Generate the GST plot with linear trend
     plot_GST <- ggplot(data = result_stats, aes(x = GST, y = Hs)) +
-      geom_point() +
+      geom_point(color = "#2C3E50") +
       geom_smooth(method = lm, color = "red", se = FALSE) +
+      labs(title = "Relationship between Genetic Diversity (Hs) and Genetic Differentiation (GST)",
+        x = "GST (Genetic Differentiation)",
+        y = "Hs (Expected Heterozygosity)") +
       theme_ipsum()
 
     output$plot_output <- renderPlot({
       plot_GST
     })
 
-    # Downloadable png of the selected plot ----
+    # Downloadable png of the selected plot
     output$download_plot_png <- downloadHandler(
       filename = function() {
         paste("plot_GST_", Sys.Date(), ".png")
@@ -224,12 +359,14 @@ server_general_stats <- function(input, output, session) {
     colnames(missing_data_transposed_total) <- ("Missing %")
     fis_missing_merged <- merge(fis, missing_data_transposed_total, by = "row.names", all.x = TRUE) %>% column_to_rownames("Row.names")
 
-    # Generate the FIS plot and store it in plot_output
     plot_FIS <- ggplot(fis_missing_merged, aes(x = `Missing %`, y = `Fis (W&C)`)) +
-      geom_point() +
-      theme_ipsum() +
+      geom_point(color = "#2C3E50") +
+      geom_smooth(method = "lm", se = FALSE, color = "red") +
       scale_x_continuous(labels = scales::number_format(accuracy = 0.01)) +
-      geom_smooth(method = "lm", se = FALSE, color = "red")
+      labs(title = "Influence of Missing Data on Fis (Wright's Inbreeding Coefficient)",
+        x = "Percentage of Missing Genotypes",
+        y = "Fis (Wright's Inbreeding Coefficient)") +
+      theme_ipsum()
 
     # Define the output$plot_output to render the plot
     output$plot_output <- renderPlot({
@@ -254,25 +391,15 @@ server_general_stats <- function(input, output, session) {
 
     # Access the input values
     n_rep <- input$numboot
-    ###########################
-    level1 <- input$level1 # change the level to be reactive and put a dropdown menu to select from the filtered_data_indv
-    ##########################
+
+    #level
+    level1 <- input$level1
+    # Variable dynamique Level1, 2 ou 3 selectionner par le user / par defaut pop
 
     # bootstrap over level1, Columns to include in the botraping
     columns_to_fstat <- colnames(filtered_data_indv[, marker_start:marker_end])
 
-    # Start the waiter
-    # waiter_show(
-    #   hostess_loader("myHostess", preset = "bubble"),
-    #   id = "Panmixia", # specify id of plot to overlay
-    #   color = "white"
-    # )
     waiter_show(html = spin_flowers(), color = "rgba(245, 40, 145, 0.2)")
-
-
-    # hostess <- Hostess$new("myHostess", infinite = TRUE, min = 0, max = 100)
-    # hostess$print()
-    # hostess$start()
 
     # Perform bootstrapping with stratification
     boot_mat_strat <- boot(
@@ -280,7 +407,7 @@ server_general_stats <- function(input, output, session) {
       data = filtered_data_indv,
       statistic = boot_fonction,
       R = n_rep,
-      strata = as.numeric(as.factor(filtered_data_indv$Population)),
+      strata = as.numeric(as.factor(filtered_data_indv$level1)),
       columns = columns_to_fstat,
       parallel = "multicore",
       ncpus = num_cores,
@@ -291,21 +418,11 @@ server_general_stats <- function(input, output, session) {
     boot_mat_strat_CI <- as.data.frame(boot_mat_strat_CI)
     rownames(boot_mat_strat_CI) <- columns_to_fstat
 
-    #  render the result
+    panmixia_boot_download(boot_mat_strat_CI)
     output$panmixia_boot_result <- renderTable({
-      req(boot_mat_strat_CI)
-      return(boot_mat_strat_CI)
+      req(panmixia_boot_download())
+      panmixia_boot_download()
     })
-
-    # Downloadable csv of selected dataset
-    output$download_panmixia_csv <- downloadHandler(
-      filename = function() {
-        paste("panmixia_stats_result_", Sys.Date(),  "_.csv", sep = "")
-      },
-      content = function(file) {
-        write.csv(boot_mat_strat_CI, file, row.names = TRUE)
-      }
-    )
 
     # Reset rownames as a column in the data frame
     boot_mat_strat_CI$Marker <- rownames(boot_mat_strat_CI)
@@ -335,10 +452,17 @@ server_general_stats <- function(input, output, session) {
         ggsave(filename = file, plot = panmixia_plot, dpi = 300)
       }
     )
-
-    # Hide the waiter
-    # hostess$close()
-    # waiter_hide_on_render(id = "Panmixia")
     waiter_hide()
   })
+
+  # Panmixia download
+  output$download_panmixia_csv <- downloadHandler(
+    filename = function() {
+      paste0("panmixia_stats_result_", Sys.Date(), ".csv")
+    },
+    content = function(file) {
+      req(panmixia_boot_download())
+      write.csv(panmixia_boot_download(), file, row.names = FALSE)
+    }
+  )
 }

@@ -37,7 +37,6 @@ concat_identical_cols <- function(df, ploidy) {
   return(result)
 }
 
-
 # Define a function for rendering info boxes (server_importdata)
 renderInfoBoxUI <- function(title, value, icon_name, color) {
   infoBox(
@@ -57,7 +56,7 @@ boot_fonction <- function(data, indices, columns) {
         sep = "/",
         ncode = 6,
         ind.names = data$indv,
-        pop = data$Population,
+        pop = data$Population, # data Level
         NA.char = "0/0",
         ploidy = 2,
         type = "codom",
@@ -66,18 +65,12 @@ boot_fonction <- function(data, indices, columns) {
       )
       fst_results <- as.data.frame(pegas::Fst(pegas::as.loci(subset_data)))
       results_mat <- fst_results %>%
-        select(Fis) %>%
+        select(Fis) %>% # Ajouter FIT, FST, FST-max, Hs et Ht
         as.matrix()
       return(results_mat)
 }
 
-
-
-
-############################################ LD ########################################
-
-
-
+# Linkage Disequilibrium
 # Function to create contingency tables for each population
 create_contingency_tables <- function(data, loci, include_missing = TRUE) {
   populations <- unique(data$Population)

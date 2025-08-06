@@ -34,13 +34,11 @@ suppressPackageStartupMessages({
   library(doParallel)
 })
 
-
 # Source server and UI files
 source("module/server_import_data.R")
 source("module/server_genetic_drift.R")
 source("module/server_general_stats.R")
 source("module/server_LD.R")
-
 
 source("module/ui_import_data.R")
 source("module/ui_genetic_drift.R")
@@ -54,20 +52,23 @@ source("module/welcome.R")
 shiny.react::enableReactDebugMode()
 
 ui <- dashboardPage(
-  skin = "midnight",
+  skin = "black-light",
   header = header,
   sidebar = sidebar,
   body = body
 )
 
 server <- function(input, output, session) {
-  # Combine server functions from other source files
   server_import_data(input, output, session)
   server_general_stats(input, output, session)
   server_LD(input, output, session)
   server_genetic_drift(input, output, session)
 }
 
-parasiteR_app <- shinyApp(ui = ui, server = server)
+pgacmdr_app <- shinyApp(
+  ui = ui, 
+  server = server
+)
 
-runApp(parasiteR_app)
+runApp(pgacmdr_app)
+

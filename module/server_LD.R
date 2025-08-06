@@ -1,7 +1,3 @@
-#####
-# To do list:
-  
-
 ####
 library(dplyr)
 library(parallel)
@@ -11,9 +7,8 @@ library(shinybusy) # For progress bar
 
 # Define server logic for Linkage Disequilibrium tab
 server_LD <- function(input, output, session) {
-  
   # Load data (this would be dynamically updated in the app)
-  data <- read.csv("data/data-2023-09-11 (2).csv")
+  data <- read.csv("data/data-2023-09-11.csv")
   loci <- c("B12", "C07", "D12", "D10", "A12", "C03")
   
   # Combined process with a progress bar
@@ -54,18 +49,17 @@ server_LD <- function(input, output, session) {
     remove_modal_progress()
     
     return(summary_table)
+
   })
-  
-  # Output: Summary Table
+
   output$summary_output <- renderTable({
     req(summary_table_reactive())
     summary_table_reactive()
   })
-  
-  # Output: Download CSV
-  output$download_gstats_csv <- downloadHandler(
+
+  output$download_LD_csv <- downloadHandler(
     filename = function() {
-      paste("LD_between_each_pair_", Sys.Date(), ".csv", sep = "")
+      paste0("LD_between_each_pair_", Sys.Date(), ".csv")
     },
     content = function(file) {
       req(summary_table_reactive())

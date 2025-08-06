@@ -3,12 +3,11 @@
 # Define the UI for the Linkage Disequilibrium tab
 linkage_desequilibrium_UI <- function() {
   fluidPage(
-    useWaiter(), # Ensure this is correctly placed
+    useWaiter(),
     fluidRow(
       box(
         width = 4,
-        title = "Compute the linkage disequilibrium statistics",
-        status = "primary",
+        title = div(style = "background-color: #756bb1; padding: 10px; color: black;", "Compute the linkage disequilibrium statistics"),
         checkboxInput("include_missing", "Include Missing Data", value = TRUE),
         numericInput(
           "n_iterations",
@@ -22,13 +21,13 @@ linkage_desequilibrium_UI <- function() {
       ),
       box(
         width = 8,
-        title = "Summary output",
-        status = "primary",
+        title = div(style = "background-color: #756bb1; padding: 10px; color: black;", "Summary output"),
         solidHeader = TRUE,
-        # DOWNLOAD
-        downloadButton("download_gstats_csv", "Download CSV"),
-        # Display the table here
-        tableOutput("summary_output")
+        tagList(
+          div(style = "overflow-y: scroll; overflow-x: scroll;", tableOutput("summary_output")),
+          br(),
+          downloadButton("download_LD_csv", "Download CSV", class = "btn btn-primary")
+        )
       )
     )
   )
