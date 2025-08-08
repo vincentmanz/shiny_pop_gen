@@ -205,6 +205,7 @@ server_import_data <- function(id) {
         level2       = if ("Level2" %in% colnames(df_formated)) df_formated$Level2 else NULL,
         level3       = if ("Level3" %in% colnames(df_formated)) df_formated$Level3 else NULL
       )
+      formatted_data$GPS <- formatted_data$GPS[, c("Latitude", "Longitude")]
       save(formatted_data, file = "data/formatted_data.RData")
     })
   })

@@ -1,15 +1,11 @@
-# server_general_stats.R
-# Use with a module UI like: general_stats_ui("gs") and server_general_stats("gs")
-
 # ==== environment variables ====
 num_cores <- parallel::detectCores()
-R_default <- 1000      # default bootstrap reps (if you need it elsewhere)
+R_default <- 1000      # default bootstrap reps
 n_rep_default <- 1000  # default replicates (HW-Panmixia)
 
 server_general_stats <- function(id) {
   moduleServer(id, function(input, output, session) {
     
-    # --- one reactive dependency that changes when ANY action button is pressed
     any_action <- reactive({
       list(
         input$run_basic_stats,
@@ -20,7 +16,6 @@ server_general_stats <- function(id) {
       )
     })
     
-    # ---- SAFE builder helpers ------------------------------------------------
     safe_vec <- function(x, n) {
       if (is.null(x)) return(rep(NA, n))
       if (length(x) == n) return(x)
@@ -41,28 +36,52 @@ server_general_stats <- function(id) {
       data.frame(Latitude = rep(NA, n), Longitude = rep(NA, n))
     }
     
-    # --- lazy-load formatted_data.RData when the FIRST button is pressed ------
     formatted_metadata <- eventReactive(any_action(), {
-      load("data/formatted_data.RData")  # must create `formatted_data` in env
+      f <- "data/formatted_data.RData"
       
-      validate(
-        need(exists("formatted_data"), "formatted_data not found in RData."),
-        need(is.list(formatted_data), "formatted_data is not a list.")
-      )
+      if (!file.exists(f)) {
+        shinyalert::shinyalert(
+          title = "No formatted data",
+          text  = "I can't find data/formatted_data.RData. Go to the Data tab and click 'Assign metadata' first.",
+          type  = "error"
+        )
+        return(NULL)
+      }
       
-      # Determine row count from haplotype first, then Population
+      ok <- tryCatch({
+        load(f)
+        TRUE
+      }, error = function(e) {
+        shinyalert::shinyalert("Load error", paste("Couldn't load:", e$message), type = "error")
+        FALSE
+      })
+      if (!ok) return(NULL)
+      
+      if (!exists("formatted_data")) {
+        shinyalert::shinyalert("Missing object", "The RData file doesn't contain `formatted_data`.", type = "error")
+        return(NULL)
+      }
+      if (!is.list(formatted_data)) {
+        shinyalert::shinyalert("Bad object", "`formatted_data` is not a list.", type = "error")
+        return(NULL)
+      }
+      
       n_hap <- if (!is.null(formatted_data$haplotype)) nrow(formatted_data$haplotype) else NA_integer_
       n_pop <- if (!is.null(formatted_data$Population)) length(formatted_data$Population) else NA_integer_
       n <- if (!is.na(n_hap)) n_hap else n_pop
-      validate(need(!is.na(n) && n > 0, "Could not infer row count from formatted_data."))
-      
-      # Build pieces safely
-      gps_df   <- safe_gps(formatted_data$GPS, n)
-      haplo_df <- {
-        x <- formatted_data$haplotype
-        validate(need(!is.null(x) && nrow(x) == n, "haplotype table missing or row-mismatched."))
-        as.data.frame(x, stringsAsFactors = FALSE)
+      if (is.na(n) || n <= 0) {
+        shinyalert::shinyalert("Empty data", "Could not infer row count from `formatted_data`.", type = "error")
+        return(NULL)
       }
+      
+      x <- formatted_data$haplotype
+      if (is.null(x) || !is.data.frame(x) || nrow(x) != n) {
+        shinyalert::shinyalert("Bad haplotype", "Haplotype table missing or row-mismatched.", type = "error")
+        return(NULL)
+      }
+      
+      gps_df <- safe_gps(formatted_data$GPS, n)
+      haplo_df <- as.data.frame(x, stringsAsFactors = FALSE)
       
       df_formated <- dplyr::bind_cols(
         data.frame(Population = safe_vec(formatted_data$Population, n), stringsAsFactors = FALSE),
@@ -85,15 +104,13 @@ server_general_stats <- function(id) {
         missing_data_code  = if (!is.null(formatted_data$missing_code)) formatted_data$missing_code else "NA",
         haplotype          = haplo_df
       )
-    }, ignoreInit = TRUE)  # don't touch disk at app load
+    }, ignoreInit = TRUE)
     
-    # --- genotype columns from haplotype -------------------------------------
     geno_cols <- reactive({
       md <- formatted_metadata(); req(md)
       colnames(md$haplotype)
     })
     
-    # --- populate level1 dropdown AFTER first click (lazy) --------------------
     observeEvent(any_action(), {
       md <- formatted_metadata(); req(md)
       df <- md$df_formated
@@ -106,24 +123,19 @@ server_general_stats <- function(id) {
       }
     }, ignoreInit = TRUE)
     
-    # --- filtered dataframe (optional filter by level1) -----------------------
     filtered_data <- reactive({
       md <- formatted_metadata(); req(md)
       df <- md$df_formated
-      
       if (!is.null(input$level1) && nzchar(input$level1)) {
         df <- df[df$level1 == input$level1, , drop = FALSE]
       }
-      
       df$indv <- paste(substr(df$Population, 1, 3), seq_len(nrow(df)), sep = ".")
       df
     })
     
-    # --- genind & hierfstat ---------------------------------------------------
     mydata_genind <- reactive({
       md <- formatted_metadata(); req(md)
       df <- filtered_data(); req(nrow(df) > 0)
-      
       df2genind(
         X          = df[, geno_cols(), drop = FALSE],
         sep        = "/",
@@ -140,62 +152,64 @@ server_general_stats <- function(id) {
       genind2hierfstat(mydata_genind())
     })
     
-    # --- missing-data table (built only when needed) --------------------------
     missing_data_tbl <- reactive({
       gi <- mydata_genind(); req(gi)
       md_tab <- poppr::info_table(gi, plot = FALSE, percent = TRUE, df = TRUE)
-      
       validate(need(is.data.frame(md_tab), "No Missing Data Found!"))
       validate(need(all(c("Population","Locus","Missing") %in% names(md_tab)),
                     "Missing-data table lacks Population/Locus/Missing."))
-      
       md_wide <- tidyr::pivot_wider(md_tab, names_from = Locus, values_from = Missing)
       md_wide <- tibble::column_to_rownames(md_wide, var = "Population")
       as.data.frame(md_wide) * 100
     })
     
-    # --- stash full stats after basic stats run --------------------------------
     result_stats <- reactiveVal(NULL)
     
-    ############################################################################
-    # Actions
-    ############################################################################
-    
-    # ---- BASIC STATS (Ho, Hs, Ht, W&C, Nei, GST, GST'') ----------------------
+    # ---------------- BASIC STATS ----------------
     observeEvent(input$run_basic_stats, {
-      my_hier <- mydata_hierfstat()
-      my_gi   <- mydata_genind()
-      n_pop   <- formatted_metadata()$n_pop
+      md <- formatted_metadata()
+      if (is.null(md)) return()
       
-      # hierfstat per-locus
+      df <- filtered_data()
+      if (is.null(df) || nrow(df) == 0) {
+        shinyalert::shinyalert("No data", "Filtered data is empty. Check your level1 filter.", type = "warning")
+        return()
+      }
+      
+      my_gi <- tryCatch(mydata_genind(), error = function(e) {
+        shinyalert::shinyalert("genind error", e$message, type = "error")
+        NULL
+      })
+      if (is.null(my_gi)) return()
+      
+      my_hier <- tryCatch(mydata_hierfstat(), error = function(e) {
+        shinyalert::shinyalert("hierfstat error", e$message, type = "error")
+        NULL
+      })
+      if (is.null(my_hier)) return()
+      
+      n_pop <- md$n_pop
       result   <- hierfstat::basic.stats(my_hier)
       df_basic <- as.data.frame(result$perloc)
-      
-      # Weir & Cockerham via pegas
-      loci_df <- as.data.frame(adegenet::as.loci(my_gi))
-      wc      <- pegas::Fst(pegas::as.loci(loci_df))
+      loci_df  <- as.data.frame(pegas::as.loci(my_gi))
+      wc       <- pegas::Fst(pegas::as.loci(loci_df))
       colnames(wc) <- c("Fit (W&C)", "Fst (W&C)", "Fis (W&C)")
       wc <- as.data.frame(wc)
       
-      # GST & GST''
       df_basic <- df_basic %>%
         dplyr::mutate(
           GST     = 1 - Hs / Ht,
           `GST''` = (n_pop * (Ht - Hs)) / ((n_pop * Hs - Ht) * (1 - Hs))
         )
       
-      # merge
       merged <- merge(wc, df_basic, by = "row.names", all.x = TRUE)
       rownames(merged) <- merged[, 1]
       merged <- merged[, -1, drop = FALSE]
-      
-      # optional rename if Nei columns exist
       if ("Fst" %in% names(merged)) names(merged)[names(merged) == "Fst"] <- "Fst (Nei)"
       if ("Fis" %in% names(merged)) names(merged)[names(merged) == "Fis"] <- "Fis (Nei)"
       
       result_stats(merged)
       
-      # selection from UI
       selected_stats <- c(
         "Ho" = input$ho_checkbox,
         "Hs" = input$hs_checkbox,
@@ -210,104 +224,146 @@ server_general_stats <- function(id) {
       )
       
       if (!any(selected_stats)) {
-        if ("shinyalert" %in% .packages()) {
-          shinyalert::shinyalert(
-            title = "No statistics selected",
-            text  = "Please tick at least one metric.",
-            type  = "warning"
-          )
-        }
+        shinyalert::shinyalert(
+          title = "No statistics selected",
+          text  = "Please tick at least one metric.",
+          type  = "warning"
+        )
         return(invisible(NULL))
       }
       
       to_show <- merged[, names(selected_stats)[selected_stats], drop = FALSE]
-      
       output$basic_stats_result <- renderTable({
         req(ncol(to_show) > 0)
         to_show
-      })
-      
+      }, rownames = TRUE)
       output$download_gstats_csv <- downloadHandler(
         filename = function() paste0("basic_stats_result_", Sys.Date(), ".csv"),
         content  = function(file) write.csv(to_show, file, row.names = TRUE)
       )
     })
     
-    # ---- HEATMAP (missingness) -----------------------------------------------
+    # ==== Heatmap of missing data ====
     observeEvent(input$run_plot_heatmap, {
+      filtered_data_indv <- filtered_data()
       missing_data <- missing_data_tbl()
-      req(nrow(missing_data) > 0)
       
-      heatmap_df <- tibble::rownames_to_column(missing_data, var = "location") |>
-        reshape2::melt(value.name = "percent")
-      names(heatmap_df) <- c("location", "marker", "percent")
+      # Data shaping
+      missing_data <- tibble::rownames_to_column(missing_data, var = "location")
       
-      heatmap_missing <- ggplot2::ggplot(heatmap_df, ggplot2::aes(x = location, y = marker, fill = percent)) +
-        ggplot2::geom_tile() +
-        ggplot2::labs(x = "Population", y = "Marker", fill = "Missing %") +
-        ggplot2::theme(axis.text.x = ggplot2::element_text(angle = 90, hjust = 1))
+      # Melt for ggplot2
+      heatmap_data_melted <- reshape2::melt(missing_data, id.vars = "location", value.name = "percent")
+      colnames(heatmap_data_melted) <- c("location", "marker", "percent")
+      
+      # Plot
+      heatmap_missing <- ggplot(heatmap_data_melted, aes(x = location, y = marker, fill = percent)) +
+        geom_tile() +
+        labs(x = "Population", y = "Marker", fill = "Missing %") +
+        theme(axis.text.x = element_text(angle = 90, hjust = 1))
       
       output$plot_output <- renderPlot({ heatmap_missing })
       
       output$download_plot_png <- downloadHandler(
         filename = function() paste0("plot_heatmap_missing_data_", Sys.Date(), ".png"),
-        content  = function(file) ggsave(filename = file, plot = heatmap_missing, dpi = 300)
+        content = function(file) ggsave(file, plot = heatmap_missing, dpi = 300)
       )
     })
     
-    # ---- GST vs Hs plot (add buttons/UI as needed) ---------------------------
+    # ==== GST plot ====
     observeEvent(input$run_plot_GST, {
-      res <- result_stats()
-      validate(need(!is.null(res), "Run basic stats first."))
-      validate(need(all(c("GST","Hs") %in% colnames(res)), "GST/Hs not available."))
+      df_stats <- result_stats()
+      validate(need(!is.null(df_stats), "Please run basic stats first"))
       
-      plot_GST <- ggplot2::ggplot(res, ggplot2::aes(x = GST, y = Hs)) +
-        ggplot2::geom_point() +
-        ggplot2::geom_smooth(method = stats::lm, se = FALSE, color = "red") +
+      plot_GST <- ggplot(df_stats, aes(x = GST, y = Hs)) +
+        geom_point() +
+        geom_smooth(method = lm, color = "red", se = FALSE) +
         hrbrthemes::theme_ipsum()
       
       output$plot_output <- renderPlot({ plot_GST })
       
       output$download_plot_png <- downloadHandler(
         filename = function() paste0("plot_GST_", Sys.Date(), ".png"),
-        content  = function(file) ggsave(filename = file, plot = plot_GST, dpi = 300)
+        content = function(file) ggsave(file, plot = plot_GST, dpi = 300)
       )
     })
     
-    # ---- FIS vs Missing% plot (add buttons/UI as needed) ---------------------
+    # ==== FIS vs Missing % ====
     observeEvent(input$run_plot_FIS, {
-      res <- result_stats()
-      validate(need(!is.null(res), "Run basic stats first."))
-      validate(need("Fis (W&C)" %in% colnames(res), "Fis (W&C) not available."))
-      
+      df_stats <- result_stats()
       missing_data <- missing_data_tbl()
-      req(nrow(missing_data) > 0)
       
-      res2 <- res %>% tibble::rownames_to_column(var = "Markers")
-      fis  <- res2 %>% dplyr::select(Markers, `Fis (W&C)`) %>% tibble::column_to_rownames("Markers")
+      fis <- tibble::rownames_to_column(df_stats, var = "Markers") %>%
+        dplyr::select(Markers, `Fis (W&C)`) %>%
+        tibble::column_to_rownames("Markers")
       
-      md_t <- t(as.data.frame(missing_data)) |> as.data.frame()
-      if ("Mean" %in% rownames(md_t)) md_t <- md_t[setdiff(rownames(md_t), "Mean"), , drop = FALSE]
-      validate(need("Total" %in% colnames(md_t), "Missing data table has no 'Total' column."))
+      missing_data_t <- t(as.data.frame(missing_data))
+      missing_total <- as.data.frame(missing_data_t) %>% dplyr::select(Total)
+      missing_total <- subset(missing_total, !rownames(missing_total) %in% "Mean")
+      colnames(missing_total) <- "Missing %"
       
-      md_total <- md_t %>% dplyr::select(Total)
-      colnames(md_total) <- "Missing %"
-      
-      merged <- merge(fis, md_total, by = "row.names", all.x = TRUE) %>%
+      fis_missing <- merge(fis, missing_total, by = "row.names", all.x = TRUE) %>%
         tibble::column_to_rownames("Row.names")
       
-      plot_FIS <- ggplot2::ggplot(merged, ggplot2::aes(x = `Missing %`, y = `Fis (W&C)`)) +
-        ggplot2::geom_point() +
+      plot_FIS <- ggplot(fis_missing, aes(x = `Missing %`, y = `Fis (W&C)`)) +
+        geom_point() +
         hrbrthemes::theme_ipsum() +
-        ggplot2::scale_x_continuous(labels = scales::number_format(accuracy = 0.01)) +
-        ggplot2::geom_smooth(method = "lm", se = FALSE, color = "red")
+        scale_x_continuous(labels = scales::number_format(accuracy = 0.01)) +
+        geom_smooth(method = "lm", se = FALSE, color = "red")
       
       output$plot_output <- renderPlot({ plot_FIS })
       
       output$download_plot_png <- downloadHandler(
         filename = function() paste0("plot_FIS_", Sys.Date(), ".png"),
-        content  = function(file) ggsave(filename = file, plot = plot_FIS, dpi = 300)
+        content = function(file) ggsave(file, plot = plot_FIS, dpi = 300)
       )
     })
+    
+    # ==== Panmixia Bootstrap ====
+    observeEvent(input$run_panmixia, {
+      filtered_data_indv <- filtered_data()
+      n_rep <- input$numboot
+      columns_to_fstat <- colnames(formatted_data$haplotype)
+      
+      waiter_show(html = spin_flowers(), color = "rgba(245, 40, 145, 0.2)")
+      
+      boot_mat_strat <- boot(
+        data = filtered_data_indv,
+        statistic = boot_fonction,
+        R = n_rep,
+        strata = as.numeric(as.factor(filtered_data_indv$Population)),
+        columns = columns_to_fstat,
+        parallel = "multicore",
+        ncpus = num_cores
+      )
+      
+      boot_CI <- broom::tidy(boot_mat_strat, conf.int = TRUE, conf.method = "perc")
+      boot_CI <- as.data.frame(boot_CI)
+      rownames(boot_CI) <- columns_to_fstat
+      
+      output$panmixia_boot_result <- renderTable(boot_CI, rownames = TRUE)
+      
+      output$download_panmixia_csv <- downloadHandler(
+        filename = function() paste0("panmixia_stats_result_", Sys.Date(), ".csv"),
+        content = function(file) write.csv(boot_CI, file, row.names = TRUE)
+      )
+      
+      boot_CI$Marker <- factor(rownames(boot_CI))
+      
+      panmixia_plot <- ggplot(boot_CI, aes(x = Marker, y = statistic)) +
+        geom_point() +
+        geom_errorbar(aes(ymin = as.numeric(conf.low), ymax = as.numeric(conf.high)),
+                      width = 0.2, position = position_dodge(0.05)) +
+        xlab("Loci") + ylab("Fis (W&C)")
+      
+      output$panmixia_boot_plot <- renderPlot({ panmixia_plot })
+      
+      output$download_panmixia_boot_plot <- downloadHandler(
+        filename = function() paste0("panmixia_plot_", Sys.Date(), ".png"),
+        content = function(file) ggsave(file, plot = panmixia_plot, dpi = 300)
+      )
+      
+      waiter_hide()
+    })
+    
   })
 }
