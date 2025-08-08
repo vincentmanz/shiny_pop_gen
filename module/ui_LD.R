@@ -1,34 +1,40 @@
-# ui_LD.R
+# module/ui_LD.R
 
-# Define the UI for the Linkage Disequilibrium tab
-linkage_desequilibrium_UI <- function() {
+# Define the UI for the Linkage Disequilibrium tab (module)
+linkage_desequilibrium_UI <- function(id) {
+  ns <- NS(id)
+  
   fluidPage(
-    useWaiter(), # Ensure this is correctly placed
+    waiter::useWaiter(),
     fluidRow(
-      box(
+      shinydashboard::box(
         width = 4,
-        title = "Compute the linkage disequilibrium statistics",
+        title = "Compute linkage disequilibrium (LD)",
         status = "primary",
-        checkboxInput("include_missing", "Include Missing Data", value = TRUE),
+        solidHeader = TRUE,
+        
+        checkboxInput(ns("include_missing"), "Include Missing Data", value = TRUE),
         numericInput(
-          "n_iterations",
+          ns("n_iterations"),
           "Number of Iterations",
           value = 10000,
           min = 1000,
           step = 1000
         ),
         tags$hr(),
-        actionButton("run_LD", "Run", icon = icon("rocket"))
+        actionButton(ns("run_LD"), "Run", icon = icon("rocket"))
       ),
-      box(
+      
+      shinydashboard::box(
         width = 8,
         title = "Summary output",
         status = "primary",
         solidHeader = TRUE,
-        # DOWNLOAD
-        downloadButton("download_gstats_csv", "Download CSV"),
-        # Display the table here
-        tableOutput("summary_output")
+        
+        downloadButton(ns("download_gstats_csv"), "Download CSV"),
+        div(style = "max-height: 600px; overflow-y: auto;",
+            tableOutput(ns("summary_output"))
+        )
       )
     )
   )

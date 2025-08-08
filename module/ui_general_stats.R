@@ -1,106 +1,115 @@
 # ui_general_stats.R
-
-general_stats_UI <- function() {
+general_stats_ui <- function(id) {
+  ns <- NS(id)
+  
   fluidPage(
-    useWaiter(),
-    #use_hostess(),
+    waiter::useWaiter(),
+    
     fluidRow(
-      box(
+      shinydashboard::box(
         width = 2,
         title = "Basic diversity and differentiation statistics",
         status = "primary",
-        h4("Select indices"),
         solidHeader = TRUE,
-        checkboxInput("ho_checkbox", "Ho", TRUE),
-        checkboxInput("hs_checkbox", "Hs", TRUE),
-        checkboxInput("ht_checkbox", "Ht", TRUE),
-        checkboxInput("fit_wc_checkbox", "Fit (W&C)", TRUE),
-        checkboxInput("fis_wc_checkbox", "Fis (W&C)", TRUE),
-        checkboxInput("fst_wc_checkbox", "Fst (W&C)", TRUE),
-        checkboxInput("fis_n_checkbox", "Fis (Nei)", TRUE),
-        checkboxInput("fst_n_checkbox", "Fst (Nei)", TRUE),
-        checkboxInput("GST_checkbox", "GST", FALSE),
-        checkboxInput("GST_sec_checkbox", "GST''", FALSE),
+        
+        h4("Select indices"),
+        checkboxInput(ns("ho_checkbox"), "Ho", TRUE),
+        checkboxInput(ns("hs_checkbox"), "Hs", TRUE),
+        checkboxInput(ns("ht_checkbox"), "Ht", TRUE),
+        checkboxInput(ns("fit_wc_checkbox"), "Fit (W&C)", TRUE),
+        checkboxInput(ns("fis_wc_checkbox"), "Fis (W&C)", TRUE),
+        checkboxInput(ns("fst_wc_checkbox"), "Fst (W&C)", TRUE),
+        checkboxInput(ns("fis_n_checkbox"), "Fis (Nei)", TRUE),
+        checkboxInput(ns("fst_n_checkbox"), "Fst (Nei)", TRUE),
+        checkboxInput(ns("GST_checkbox"), "GST", FALSE),
+        checkboxInput(ns("GST_sec_checkbox"), "GST''", FALSE),
         tags$hr(),
-        actionButton("run_basic_stats", "Run", icon = icon("rocket"))
+        
+        # level1 filter (server will populate choices on first click)
+        selectInput(ns("level1"), "Filter level1:", choices = c("All" = "")),
+        
+        actionButton(ns("run_basic_stats"), "Run", icon = icon("rocket"))
       ),
-      box(
+      
+      shinydashboard::box(
         width = 10,
         title = "General statistics",
         status = "primary",
         solidHeader = TRUE,
-        ## DOWNLOAD
-        downloadButton("download_gstats_csv", "Download CSV"),
-        # Display the table here
-        tableOutput("basic_stats_result")
+        
+        downloadButton(ns("download_gstats_csv"), "Download CSV"),
+        tableOutput(ns("basic_stats_result"))
       )
     ),
+    
     fluidRow(
-      box(
+      shinydashboard::box(
         title = "Heatmap",
         width = 4,
         status = "primary",
         solidHeader = TRUE,
-        actionButton("run_plot_heatmap", "Heatmap")
+        actionButton(ns("run_plot_heatmap"), "Heatmap")
       ),
-      box(
+      shinydashboard::box(
         title = "GST",
         width = 4,
         status = "primary",
         solidHeader = TRUE,
-        actionButton("run_plot_GST", "GST")
+        actionButton(ns("run_plot_GST"), "GST")
       ),
-      box(
+      shinydashboard::box(
         title = "FIS",
         width = 4,
         status = "primary",
         solidHeader = TRUE,
-        actionButton("run_plot_FIS", "FIS")
+        actionButton(ns("run_plot_FIS"), "FIS")
       )
     ),
+    
     fluidRow(
-      box(
+      shinydashboard::box(
         width = 12,
         title = "Plot result",
         status = "primary",
         solidHeader = TRUE,
-        ## DOWNLOAD
-        downloadButton("download_plot_png", "Download"),
-        # Display the plot using the reactive expression
-        plotOutput("plot_output")
+        
+        downloadButton(ns("download_plot_png"), "Download"),
+        plotOutput(ns("plot_output"))
       )
     ),
+    
     fluidRow(
-      box(
+      shinydashboard::box(
         width = 4,
         title = "Panmixia",
         status = "primary",
         solidHeader = TRUE,
-        numericInput("numboot", "Number of bootstrap replicates", value = 1000, max = 10000),
-        textInput("level1", "Population unit", value = "Population"),
-        actionButton("run_panmixia", "Run", icon = icon("rocket"))
+        
+        numericInput(ns("numboot"), "Number of bootstrap replicates", value = 1000, max = 10000),
+        # kept selectInput for level1 above; this textInput is not needed anymore
+        # textInput(ns("level1"), "Population unit", value = "Population"),
+        actionButton(ns("run_panmixia"), "Run", icon = icon("rocket"))
       ),
-      box(
+      shinydashboard::box(
         width = 8,
         title = "Panmixia tabulation",
         status = "primary",
         solidHeader = TRUE,
-        ## DOWNLOAD
-        downloadButton("download_panmixia_csv", "Download CSV"),
-        # Display the plot
-        tableOutput("panmixia_boot_result")
+        
+        downloadButton(ns("download_panmixia_csv"), "Download CSV"),
+        tableOutput(ns("panmixia_boot_result"))
       )
     ),
+    
     fluidRow(
-      box(
+      shinydashboard::box(
         width = 12,
         title = "Plot Panmixia",
         status = "primary",
         solidHeader = TRUE,
-        ## DOWNLOAD
-        downloadButton("download_panmixia_boot_plot", "Download png"),
-        # Display the plot using the reactive expression
-        plotOutput("panmixia_boot_plot")
+        
+        downloadButton(ns("download_panmixia_boot_plot"), "Download png"),
+        plotOutput(ns("panmixia_boot_plot"))
       )
     )
   )

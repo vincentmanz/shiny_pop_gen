@@ -10,7 +10,8 @@ library(doParallel)
 library(shinybusy) # For progress bar
 
 # Define server logic for Linkage Disequilibrium tab
-server_LD <- function(input, output, session) {
+server_LD <- function(id) {
+  moduleServer(id, function(input, output, session) {
   
   # Load data (this would be dynamically updated in the app)
   data <- read.csv("data/data-2023-09-11 (2).csv")
@@ -72,4 +73,5 @@ server_LD <- function(input, output, session) {
       write.csv(summary_table_reactive(), file, row.names = FALSE)
     }
   )
+})
 }
