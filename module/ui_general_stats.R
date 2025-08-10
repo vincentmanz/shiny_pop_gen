@@ -13,20 +13,26 @@ general_stats_ui <- function(id) {
         solidHeader = TRUE,
         
         h4("Select indices"),
-        checkboxInput(ns("ho_checkbox"), "Ho", TRUE),
-        checkboxInput(ns("hs_checkbox"), "Hs", TRUE),
-        checkboxInput(ns("ht_checkbox"), "Ht", TRUE),
+        checkboxInput(ns("ho_checkbox"),  "Ho", TRUE),
+        checkboxInput(ns("hs_checkbox"),  "Hs", TRUE),
+        checkboxInput(ns("ht_checkbox"),  "Ht", TRUE),
         checkboxInput(ns("fit_wc_checkbox"), "Fit (W&C)", TRUE),
         checkboxInput(ns("fis_wc_checkbox"), "Fis (W&C)", TRUE),
         checkboxInput(ns("fst_wc_checkbox"), "Fst (W&C)", TRUE),
-        checkboxInput(ns("fis_n_checkbox"), "Fis (Nei)", TRUE),
-        checkboxInput(ns("fst_n_checkbox"), "Fst (Nei)", TRUE),
-        checkboxInput(ns("GST_checkbox"), "GST", FALSE),
+        checkboxInput(ns("fis_n_checkbox"),  "Fis (Nei)", TRUE),
+        checkboxInput(ns("fst_n_checkbox"),  "Fst (Nei)", TRUE),
+        checkboxInput(ns("GST_checkbox"),    "GST", FALSE),
         checkboxInput(ns("GST_sec_checkbox"), "GST''", FALSE),
         tags$hr(),
         
-        # level1 filter (server will populate choices on first click)
-        selectInput(ns("level1"), "Filter level1:", choices = c("All" = "")),
+        # ---- Grouping + optional Population level filter ----
+        selectInput(
+          ns("level1"),
+          label   = "Population level:",
+          choices = c("All" = ""),        
+          selected = ""
+        ),
+        tags$hr(),
         
         actionButton(ns("run_basic_stats"), "Run", icon = icon("rocket"))
       ),
@@ -36,7 +42,6 @@ general_stats_ui <- function(id) {
         title = "General statistics",
         status = "primary",
         solidHeader = TRUE,
-        
         downloadButton(ns("download_gstats_csv"), "Download CSV"),
         tableOutput(ns("basic_stats_result"))
       )
@@ -72,7 +77,6 @@ general_stats_ui <- function(id) {
         title = "Plot result",
         status = "primary",
         solidHeader = TRUE,
-        
         downloadButton(ns("download_plot_png"), "Download"),
         plotOutput(ns("plot_output"))
       )
@@ -84,10 +88,7 @@ general_stats_ui <- function(id) {
         title = "Panmixia",
         status = "primary",
         solidHeader = TRUE,
-        
         numericInput(ns("numboot"), "Number of bootstrap replicates", value = 1000, max = 10000),
-        # kept selectInput for level1 above; this textInput is not needed anymore
-        # textInput(ns("level1"), "Population unit", value = "Population"),
         actionButton(ns("run_panmixia"), "Run", icon = icon("rocket"))
       ),
       shinydashboard::box(
@@ -95,7 +96,6 @@ general_stats_ui <- function(id) {
         title = "Panmixia tabulation",
         status = "primary",
         solidHeader = TRUE,
-        
         downloadButton(ns("download_panmixia_csv"), "Download CSV"),
         tableOutput(ns("panmixia_boot_result"))
       )
@@ -107,7 +107,6 @@ general_stats_ui <- function(id) {
         title = "Plot Panmixia",
         status = "primary",
         solidHeader = TRUE,
-        
         downloadButton(ns("download_panmixia_boot_plot"), "Download png"),
         plotOutput(ns("panmixia_boot_plot"))
       )
