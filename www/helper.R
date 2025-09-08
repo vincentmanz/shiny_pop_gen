@@ -1,42 +1,50 @@
 # helper.R
 
-# Define a function for concatenate the alleles in columns (server_importdata)
+# Corrected function for concatenate the alleles in columns (server_importdata)
 concat_identical_cols <- function(df, ploidy) {
+  # Get unique column names (removing .1, .2 suffixes if present)
   col_names <- colnames(df)
-  col_names <-
-    sub("\\.\\d+$", "", col_names)  # Remove .1 or .2 from column names
+  unique_names <- unique(sub("\\.\\d+$", "", col_names))
   
-  # Initialize result with one row from temp_df
-  col1 <- col_names[1]
-  temp_df <- data.frame(col1 = df[[col1]])
-  colnames(temp_df) <- col1
-  result <- temp_df
-  i <- 1
-  while (i <= ncol(df)) {
-    col1 <- col_names[i]
-    if (i + 1 <= ncol(df)) {
-      col2 <- col_names[i + 1]
-    } else {
-      result <- rbind(result, df[[col1]])
-      break
-    }
-    if (identical(col1, col2)) {
-      concatenated <-
-        ifelse(is.na(df[, i + 1]), as.character(df[, i]), paste(df[, i], df[, i + 1], sep = "/"))
-      temp_df <- data.frame(col1 = concatenated)
-      colnames(temp_df) <- col1
-      result <- cbind(result, temp_df)
-      i <- i + ploidy
-    } else {
-      result <- cbind(result, df[[col1]], df[[col2]])
-      i <- i + ploidy
+  result <- data.frame()
+  
+  for (marker_name in unique_names) {
+    # Find columns for this marker
+    marker_cols <- which(grepl(paste0("^", marker_name, "(\\.\\d+)?$"), col_names))
+    
+    if (length(marker_cols) == 2) {
+      # Two columns for this marker - concatenate alleles
+      allele1 <- df[, marker_cols[1]]
+      allele2 <- df[, marker_cols[2]]
+      
+      # Concatenate alleles with "/"
+      concatenated <- paste(allele1, allele2, sep = "/")
+      
+      # Create temporary dataframe for this marker
+      temp_df <- data.frame(concatenated)
+      colnames(temp_df) <- marker_name
+      
+      # Add to result
+      if (ncol(result) == 0) {
+        result <- temp_df
+      } else {
+        result <- cbind(result, temp_df)
+      }
+    } else if (length(marker_cols) == 1) {
+      # Only one column for this marker
+      temp_df <- data.frame(df[, marker_cols[1]])
+      colnames(temp_df) <- marker_name
+      
+      if (ncol(result) == 0) {
+        result <- temp_df
+      } else {
+        result <- cbind(result, temp_df)
+      }
     }
   }
-  result <- result[,-1]
   
   return(result)
 }
-
 
 # Define a function for rendering info boxes (server_importdata)
 renderInfoBoxUI <- function(title, value, icon_name, color) {
@@ -57,7 +65,7 @@ boot_fonction <- function(data, indices, columns) {
         sep = "/",
         ncode = 6,
         ind.names = data$indv,
-        pop = data$Population,
+        pop = data$Population, # data Level
         NA.char = "0/0",
         ploidy = 2,
         type = "codom",
@@ -66,18 +74,12 @@ boot_fonction <- function(data, indices, columns) {
       )
       fst_results <- as.data.frame(pegas::Fst(pegas::as.loci(subset_data)))
       results_mat <- fst_results %>%
-        select(Fis) %>%
+        select(Fis) %>% # Ajouter FIT, FST, FST-max, Hs et Ht
         as.matrix()
       return(results_mat)
 }
 
-
-
-
-############################################ LD ########################################
-
-
-
+# Linkage Disequilibrium
 # Function to create contingency tables for each population
 create_contingency_tables <- function(data, loci, include_missing = TRUE) {
   populations <- unique(data$Population)

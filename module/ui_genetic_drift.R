@@ -1,5 +1,4 @@
-###########################Genetic drift tab##################################
-# Define the UI for the "Genetic Drift" tab
+# ui_genetic_drift.R
 
 ## initial values, adjustable via sliders
 initial_p <- 0.5
@@ -8,7 +7,10 @@ initial_n_pops <- 5
 
 generateGeneticDriftUI <- function() {
   fluidPage(
-    titlePanel("Allele frequency changes with genetic drift"),
+    div(
+      style = "background-color: white; color: black; padding: 20px; text-align: center; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); margin-bottom: 20px; border-left: 4px solid #756bb1;",
+      titlePanel("Allele frequency changes with genetic drift")
+    ),
     sidebarLayout(
       sidebarPanel(
         numericInput("p", "Initial frequency of A", min = 0.0, max = 1.0, value = initial_p, step = 0.01),
@@ -29,11 +31,13 @@ generateGeneticDriftUI <- function() {
       ),
       
       ## Show a plot of the simulated change in allele frequencies
-      
       mainPanel(
-        # p("Notes explaining the principles of genetic drift are available at:",
-        #   uiOutput("darwin")),
-        p("The inputs to the left allow you to select a different starting initial allele frequency, diploid population size (so the number of gametes is 2N, and number of populations. Each line represents the history of allele frequency change in one population. All populations begin with an identical allele frequency. Each time you change one of the inputs, you'll get a new set of simulation results after you hit the \"Simulate Genetic Drift!\" button. If you hit \"Play\" without changing the input, you'll get a duplicate of the plot you just saw."),
+        p("The inputs to the left allow you to select a different starting initial allele frequency, 
+        diploid population size (so the number of gametes is 2N, and number of populations. 
+        Each line represents the history of allele frequency change in one population. 
+        All populations begin with an identical allele frequency. 
+        Each time you change one of the inputs, you'll get a new set of simulation results after you hit the \"Simulate Genetic Drift!\" button. 
+        If you hit \"Play\" without changing the input, you'll get a duplicate of the plot you just saw."),
         plotlyOutput("allele_frequency_plot"),
         hr(),
         p("This Shiny app was adapted from Kent Holsinger's source code:")

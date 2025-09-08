@@ -1,39 +1,32 @@
-# module/ui_LD.R
+# ui_LD.R
 
-# Define the UI for the Linkage Disequilibrium tab (module)
-linkage_desequilibrium_UI <- function(id) {
-  ns <- NS(id)
-  
+# Define the UI for the Linkage Disequilibrium tab
+linkage_desequilibrium_UI <- function() {
   fluidPage(
-    waiter::useWaiter(),
+    useWaiter(),
     fluidRow(
-      shinydashboard::box(
+      box(
         width = 4,
-        title = "Compute linkage disequilibrium (LD)",
-        status = "primary",
-        solidHeader = TRUE,
-        
-        checkboxInput(ns("include_missing"), "Include Missing Data", value = TRUE),
+        title = div(style = "background-color: #756bb1; padding: 10px; color: black;", "Compute the linkage disequilibrium statistics"),
+        checkboxInput("include_missing", "Include Missing Data", value = TRUE),
         numericInput(
-          ns("n_iterations"),
+          "n_iterations",
           "Number of Iterations",
           value = 10000,
           min = 1000,
           step = 1000
         ),
         tags$hr(),
-        actionButton(ns("run_LD"), "Run", icon = icon("rocket"))
+        actionButton("run_LD", "Run", icon = icon("rocket"))
       ),
-      
-      shinydashboard::box(
+      box(
         width = 8,
-        title = "Summary output",
-        status = "primary",
+        title = div(style = "background-color: #756bb1; padding: 10px; color: black;", "Summary output"),
         solidHeader = TRUE,
-        
-        downloadButton(ns("download_gstats_csv"), "Download CSV"),
-        div(style = "max-height: 600px; overflow-y: auto;",
-            tableOutput(ns("summary_output"))
+        tagList(
+          div(style = "overflow-y: scroll; overflow-x: scroll;", tableOutput("summary_output")),
+          br(),
+          downloadButton("download_LD_csv", "Download CSV", class = "btn btn-primary")
         )
       )
     )
