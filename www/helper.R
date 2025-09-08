@@ -79,6 +79,15 @@ boot_fonction <- function(data, indices, columns) {
       return(results_mat)
 }
 
+col_to_rowname <- function(df, colname = "Row.names") {
+  stopifnot(colname %in% names(df))
+  rownames(df) <- df[[colname]]
+  df[[colname]] <- NULL
+  return(df)
+}
+
+
+
 # Linkage Disequilibrium
 # Function to create contingency tables for each population
 create_contingency_tables <- function(data, loci, include_missing = TRUE) {

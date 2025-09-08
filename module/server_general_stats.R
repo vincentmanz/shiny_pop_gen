@@ -1,21 +1,31 @@
 # server_general_stats_part1.R
+# 
 
-# environment variables
-filtered_data <- read.csv("data/filtered_data.csv", header = TRUE)
+# Load the saved RData object
+load("data/formatted_data.RData") 
 
-# information inherited from previous page
-n_marker <- 6
-n_pop <- 8
-marker_start <- 6
-marker_end <- 11
-sequence_length <- length(marker_start:marker_end)
 
-n_indv <- nrow(filtered_data)
-pops <- unique(filtered_data$Population)
+filtered_data <- data.frame(
+  Population = formatted_data$Population,
+  formatted_data$GPS,
+  formatted_data$level1,
+  formatted_data$level2,
+  formatted_data$level3,
+  formatted_data$haplotype,
+  stringsAsFactors = FALSE
+)
+
+# Basic metadata
+n_marker <- ncol(formatted_data$haplotype)
+n_pop <- length(unique(formatted_data$Population))
+pops <- unique(formatted_data$Population)
+n_indv <- nrow(formatted_data$haplotype)
+pops <- unique(formatted_data$Population)
 num_cores <- parallel::detectCores()
-missing_data_code <- "0/0"
-column_genotype_start <- 6
-column_genotype_end <- 11
+missing_data_code <- formatted_data$missing_code
+
+
+# default values bootstrap and randomization
 R <- 1000
 n_rep <- 1000
 
@@ -29,7 +39,7 @@ server_general_stats <- function(input, output, session) {
   mydata_genind_reac <- reactiveVal(NULL)
   mydata_hierfstat_reac <- reactiveVal(NULL)
   result_stats_download <- reactiveVal(NULL)
-  
+
   # Bootstrap reactive values
   boot_loci_results <- reactiveVal(NULL)
   boot_pop_results <- reactiveVal(NULL)
@@ -96,12 +106,8 @@ server_general_stats <- function(input, output, session) {
     return(new_data)
   }
 
-  ## Create genind object
-  filtered_data <- data.frame(indv = paste(substr(filtered_data$Population, 1, 3), row.names(filtered_data), sep = "."), filtered_data)
-  filtered_data_reac(filtered_data)
-
   # Compute genind object
-  mydata_genind <- df2genind(X = filtered_data[, column_genotype_start:column_genotype_end], sep = "/", ncode = 6, ind.names = filtered_data$indv, pop = filtered_data$Population, NA.char = "NA", ploidy = 2, type = "codom", strata = NULL, hierarchy = NULL)
+  mydata_genind <- adegenet::df2genind(X = as.matrix(formatted_data$haplotype), sep = "/", ncode = 6, ind.names = formatted_data$individual, pop = formatted_data$Population, NA.char = formatted_data$missing_code, ploidy = formatted_data$ploidy, type = "codom", strata = NULL, hierarchy = NULL)
   mydata_genind_reac(mydata_genind)
 
   # Compute hierfstat object
@@ -109,7 +115,6 @@ server_general_stats <- function(input, output, session) {
   mydata_hierfstat_reac(mydata_hierfstat)
 
   # create the missing df
-  mydata_genind <- df2genind(X = filtered_data[, column_genotype_start:column_genotype_end], sep = "/", ncode = 6, ind.names = filtered_data$indv, pop = filtered_data$Population, NA.char = "0/0", ploidy = 2, type = "codom", strata = NULL, hierarchy = NULL)
   missing_data <- info_table(mydata_genind, plot = FALSE, percent = TRUE, df = TRUE)
   missing_data <- as.data.frame(missing_data) %>% spread(key = Locus, value = Missing)
   missing_data <- missing_data %>% column_to_rownames(var = "Population")
@@ -250,7 +255,7 @@ server_general_stats <- function(input, output, session) {
 
     # Merge all results
     result_stats <- merge(result_f_stats, df_result_basic, by = "row.names", all.x = TRUE)
-    
+
     # Vérifier les colonnes disponibles avant de renommer
     available_cols <- colnames(result_stats)
     if("Fst" %in% available_cols && "Fis" %in% available_cols) {
@@ -262,28 +267,59 @@ server_general_stats <- function(input, output, session) {
       if(length(fis_nei_col) > 0) colnames(result_stats)[fis_nei_col[1]] <- "Fis (Nei)"
     }
     
-    rownames(result_stats) <- result_stats[, 1]
-    result_stats <- result_stats[, -1]
+    result_stats <- col_to_rowname(result_stats, "Row.names")
     result_stats_reactive(result_stats)
 
     # Prepare final table for display - only show selected statistics
     available_stats <- intersect(names(selected_stats), colnames(result_stats))
     selected_available_stats <- available_stats[selected_stats[available_stats]]
     
-    if(length(selected_available_stats) > 0) {
+    if (length(selected_available_stats) > 0) {
+      # select and add Locus column
       result_stats_select <- result_stats[, selected_available_stats, drop = FALSE]
       result_stats_select$Locus <- rownames(result_stats_select)
-      result_stats_select <- result_stats_select[, c("Locus", names(result_stats_select)[names(result_stats_select) != "Locus"])]
+      result_stats_select <- result_stats_select[, c("Locus", setdiff(names(result_stats_select), "Locus"))]
       
-      result_stats_download(result_stats_select)
+      # ---- display copy with exactly 5 decimals ----
+      result_stats_display <- result_stats_select
+      num_cols <- vapply(result_stats_display, is.numeric, logical(1))
+      num_cols[match("Locus", names(result_stats_display))] <- FALSE 
+      #____________________ debugging info ______________________   
+cat("Numeric columns before formatting:\n")
+print(names(result_stats_display)[num_cols])
+print("result_stats_display before formatting:\n")
+print(result_stats_display)
+
+      # result_stats_display[num_cols] <- lapply(result_stats_display[num_cols],
+      #                                          function(x) formatC(x, format = "f", digits = 5))
+      # 
+      # send to UI
+      result_stats_download(result_stats_display)
+      
     } else {
       showNotification("No valid statistics to display", type = "warning")
       result_stats_download(NULL)
+      result_stats_numeric_reactive(NULL)
     }
+#____________________ debugging info ______________________   
+cat("df_result_basic\n")
+print(lapply(df_result_basic, function(x)
+  if(is.numeric(x)) formatC(x, format="f", digits=5) else x))
+
+cat("result_f_stats\n")
+print(lapply(as.data.frame(result_f_stats), function(x)
+  if(is.numeric(x)) formatC(x, format="f", digits=5) else x))
+
+cat("Merged result_stats\n")
+print(lapply(result_stats, function(x)
+  if(is.numeric(x)) formatC(x, format="f", digits=5) else x))
+#________________________________________________________
 
     output$basic_stats_result <- renderTable({
       req(result_stats_download())
-      result_stats_download()
+      df <- result_stats_download()
+      df[, -1] <- round(df[, -1, drop = FALSE], 4)
+      df
     })
 
     output$basic_stats_ui <- renderUI({
