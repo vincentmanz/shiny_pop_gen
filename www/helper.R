@@ -86,6 +86,24 @@ col_to_rowname <- function(df, colname = "Row.names") {
   return(df)
 }
 
+format_numeric_cols <- function(df, digits = 5, exclude = "Locus") {
+  for (nm in names(df)) {
+    if (nm %in% exclude) next
+    x <- df[[nm]]
+    if (is.factor(x)) x <- as.character(x)
+    if (!is.numeric(x)) {
+      suppressWarnings(x_num <- as.numeric(x))
+    } else {
+      x_num <- x
+    }
+    if (is.numeric(x_num) && !all(is.na(x_num))) {
+      df[[nm]] <- sprintf(paste0("%.", digits, "f"), x_num)
+    } else {
+      df[[nm]] <- x
+    }
+  }
+  df
+}
 
 
 # Linkage Disequilibrium

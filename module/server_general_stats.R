@@ -39,7 +39,7 @@ server_general_stats <- function(input, output, session) {
   mydata_genind_reac <- reactiveVal(NULL)
   mydata_hierfstat_reac <- reactiveVal(NULL)
   result_stats_download <- reactiveVal(NULL)
-
+  
   # Bootstrap reactive values
   boot_loci_results <- reactiveVal(NULL)
   boot_pop_results <- reactiveVal(NULL)
@@ -48,7 +48,7 @@ server_general_stats <- function(input, output, session) {
   perm_local_results <- reactiveVal(NULL)
   perm_global_results <- reactiveVal(NULL)
   perm_subdiv_results <- reactiveVal(NULL)
-
+  
   # Update the select input choices
   updateSelectInput(session, 'Level', choices = c("select" = "", colnames(filtered_data)))
   
@@ -105,28 +105,28 @@ server_general_stats <- function(input, output, session) {
     
     return(new_data)
   }
-
+  
   # Compute genind object
   mydata_genind <- adegenet::df2genind(X = as.matrix(formatted_data$haplotype), sep = "/", ncode = 6, ind.names = formatted_data$individual, pop = formatted_data$Population, NA.char = formatted_data$missing_code, ploidy = formatted_data$ploidy, type = "codom", strata = NULL, hierarchy = NULL)
   mydata_genind_reac(mydata_genind)
-
+  
   # Compute hierfstat object
   mydata_hierfstat <- genind2hierfstat(mydata_genind)
   mydata_hierfstat_reac(mydata_hierfstat)
-
+  
   # create the missing df
   missing_data <- info_table(mydata_genind, plot = FALSE, percent = TRUE, df = TRUE)
   missing_data <- as.data.frame(missing_data) %>% spread(key = Locus, value = Missing)
   missing_data <- missing_data %>% column_to_rownames(var = "Population")
   missing_data <- missing_data * 100
   missing_data_reac(missing_data)
-
+  
   # Observe Event for Running the basic.stats
   observeEvent(input$run_basic_stats, {
     # Retrieve reactive value
     mydata_hierfstat_a <- mydata_hierfstat_reac()
     mydata_genind_a <- mydata_genind_reac()
-
+    
     # Retrieve the stats selected values
     selected_stats <- c(
       "Ho" = input$ho_checkbox,
@@ -142,7 +142,7 @@ server_general_stats <- function(input, output, session) {
       "GST" = input$GST_checkbox,
       "GST''" = input$GST_sec_checkbox
     )
-
+    
     # Check if any statistics are selected
     if (!any(selected_stats)) {
       shinyalert(
@@ -152,22 +152,22 @@ server_general_stats <- function(input, output, session) {
       )
       return(NULL)
     }
-
+    
     # Compute basic stats
     result <- basic.stats(mydata_hierfstat_a)
     df_result_basic <- as.data.frame(result$perloc)
-
+    
     # Compute Weir and Cockerham F-statistics
     data <- as.data.frame(as.loci(mydata_genind_a))
     result_f_stats <- Fst(as.loci(data))
     colnames(result_f_stats) <- c("Fit (W&C)", "Fst (W&C)", "Fis (W&C)")
-
+    
     # Compute G statistics
     df_result_basic <- df_result_basic %>% mutate(
       GST = 1 - Hs / Ht,
       `GST''` = (n_pop * (Ht - Hs)) / ((n_pop * Hs - Ht) * (1 - Hs))
     )
-
+    
     # Variable pour stocker Fst-max (toujours calculer si Fst' est demandé)
     fst_max_values <- NULL
     
@@ -200,7 +200,7 @@ server_general_stats <- function(input, output, session) {
         fst_max_values <- rep(NA, nrow(result_f_stats))
       })
     }
-
+    
     # Compute Fst' (Fst/Fst-max) if requested
     if(input$fst_prim_checkbox) {
       if(is.null(fst_max_values) || all(is.na(fst_max_values))) {
@@ -252,10 +252,10 @@ server_general_stats <- function(input, output, session) {
         })
       }
     }
-
+    
     # Merge all results
     result_stats <- merge(result_f_stats, df_result_basic, by = "row.names", all.x = TRUE)
-
+    
     # Vérifier les colonnes disponibles avant de renommer
     available_cols <- colnames(result_stats)
     if("Fst" %in% available_cols && "Fis" %in% available_cols) {
@@ -269,7 +269,7 @@ server_general_stats <- function(input, output, session) {
     
     result_stats <- col_to_rowname(result_stats, "Row.names")
     result_stats_reactive(result_stats)
-
+    
     # Prepare final table for display - only show selected statistics
     available_stats <- intersect(names(selected_stats), colnames(result_stats))
     selected_available_stats <- available_stats[selected_stats[available_stats]]
@@ -284,44 +284,21 @@ server_general_stats <- function(input, output, session) {
       result_stats_display <- result_stats_select
       num_cols <- vapply(result_stats_display, is.numeric, logical(1))
       num_cols[match("Locus", names(result_stats_display))] <- FALSE 
-      #____________________ debugging info ______________________   
-cat("Numeric columns before formatting:\n")
-print(names(result_stats_display)[num_cols])
-print("result_stats_display before formatting:\n")
-print(result_stats_display)
-
-      # result_stats_display[num_cols] <- lapply(result_stats_display[num_cols],
-      #                                          function(x) formatC(x, format = "f", digits = 5))
-      # 
-      # send to UI
-      result_stats_download(result_stats_display)
       
+      result_stats_display <- format_numeric_cols(result_stats_select, digits = 5, exclude = "Locus")
+      result_stats_download(result_stats_display)
+
     } else {
       showNotification("No valid statistics to display", type = "warning")
       result_stats_download(NULL)
       result_stats_numeric_reactive(NULL)
     }
-#____________________ debugging info ______________________   
-cat("df_result_basic\n")
-print(lapply(df_result_basic, function(x)
-  if(is.numeric(x)) formatC(x, format="f", digits=5) else x))
-
-cat("result_f_stats\n")
-print(lapply(as.data.frame(result_f_stats), function(x)
-  if(is.numeric(x)) formatC(x, format="f", digits=5) else x))
-
-cat("Merged result_stats\n")
-print(lapply(result_stats, function(x)
-  if(is.numeric(x)) formatC(x, format="f", digits=5) else x))
-#________________________________________________________
 
     output$basic_stats_result <- renderTable({
       req(result_stats_download())
-      df <- result_stats_download()
-      df[, -1] <- round(df[, -1, drop = FALSE], 4)
-      df
-    })
-
+      result_stats_download()   
+    }, rownames = FALSE)
+    
     output$basic_stats_ui <- renderUI({
       if (is.null(result_stats_download())) {
         h5("Run the analysis first to display results.")
@@ -334,30 +311,33 @@ print(lapply(result_stats, function(x)
       }
     })
   })
-
-# server_general_stats_part2.R
-# Continuation de la partie 1
-
+  
+  # server_general_stats_part2.R
+  # Continuation de la partie 1
+  
   # Basic stats download
   output$download_gstats_csv <- downloadHandler(
-    filename = function() {
-      paste0("basic_stats_result_", Sys.Date(), ".csv")
-    },
+    filename = function() paste0("basic_stats_result_", Sys.Date(), ".csv"),
     content = function(file) {
-      req(result_stats_download())
-      write.csv(result_stats_download(), file, row.names = FALSE)
+      req(result_stats_numeric_reactive())
+      df <- result_stats_numeric_reactive()
+      # round numeric columns to 5 decimals for the file
+      num_cols <- vapply(df, is.numeric, logical(1))
+      df[num_cols] <- lapply(df[num_cols], round, 5)
+      write.csv(df, file, row.names = FALSE)
     }
   )
-
+  
+  
   # Observe Event for handling the plot generation
   observeEvent(input$run_plot_heatmap, {
     # Retrieve reactive value
     filtered_data_indv <- filtered_data_reac()
     missing_data <- missing_data_reac()
-
+    
     # Data shaping
     missing_data <- rownames_to_column(missing_data, var = "location")
-
+    
     ## Melt the data for ggplot2
     heatmap_data_melted <- melt(missing_data, value.name = "location")
     colnames(heatmap_data_melted) <- c("location", "marker", "percent")
@@ -366,8 +346,8 @@ print(lapply(result_stats, function(x)
       geom_tile(color = "white") +
       scale_fill_gradient(low = "#D6EAF8", high = "#1F618D", name = "Missing data (%)") +
       labs(title = "Distribution of Missing Data by Population and Genetic Marker",
-      x = "Population", 
-      y = "Genetic Marker") +
+           x = "Population", 
+           y = "Genetic Marker") +
       theme_minimal(base_size = 14) +
       theme(
         plot.title = element_text(hjust = 0.5, face = "bold", size = 16),
@@ -375,7 +355,7 @@ print(lapply(result_stats, function(x)
         axis.text.y = element_text(size = 12),
         axis.title.x = element_text(face = "bold", size = 13),
         axis.title.y = element_text(face = "bold", size = 13))
-
+    
     output$plot_output <- renderPlot({
       heatmap_missing
     })
@@ -390,24 +370,24 @@ print(lapply(result_stats, function(x)
       }
     )
   })
-
+  
   # Observe Event for handling the plot generation for GST
   observeEvent(input$run_plot_GST, {
     # Retrieve reactive values
     result_stats <- result_stats_reactive()
-
+    
     plot_GST <- ggplot(data = result_stats, aes(x = GST, y = Hs)) +
       geom_point(color = "#2C3E50") +
       geom_smooth(method = lm, color = "red", se = FALSE) +
       labs(title = "Relationship between Genetic Diversity (Hs) and Genetic Differentiation (GST)",
-        x = "GST (Genetic Differentiation)",
-        y = "Hs (Expected Heterozygosity)") +
+           x = "GST (Genetic Differentiation)",
+           y = "Hs (Expected Heterozygosity)") +
       theme_ipsum()
-
+    
     output$plot_output <- renderPlot({
       plot_GST
     })
-
+    
     # Downloadable png of the selected plot
     output$download_plot_png <- downloadHandler(
       filename = function() {
@@ -418,13 +398,13 @@ print(lapply(result_stats, function(x)
       }
     )
   })
-
+  
   # Observe Event for handling the plot generation for FIS
   observeEvent(input$run_plot_FIS, {
     # Retrieve reactive values
     result_stats <- result_stats_reactive()
     missing_data <- missing_data_reac()
-
+    
     # Data formatting
     result_stats <- result_stats %>% rownames_to_column(var = "Markers")
     fis <- as.data.frame(result_stats) %>% select("Fis (W&C)", "Markers")
@@ -434,16 +414,16 @@ print(lapply(result_stats, function(x)
     missing_data_transposed_total <- subset(missing_data_transposed_total, !rownames(missing_data_transposed_total) %in% "Mean")
     colnames(missing_data_transposed_total) <- ("Missing %")
     fis_missing_merged <- merge(fis, missing_data_transposed_total, by = "row.names", all.x = TRUE) %>% column_to_rownames("Row.names")
-
+    
     plot_FIS <- ggplot(fis_missing_merged, aes(x = `Missing %`, y = `Fis (W&C)`)) +
       geom_point(color = "#2C3E50") +
       geom_smooth(method = "lm", se = FALSE, color = "red") +
       scale_x_continuous(labels = scales::number_format(accuracy = 0.01)) +
       labs(title = "Influence of Missing Data on Fis (Wright's Inbreeding Coefficient)",
-        x = "Percentage of Missing Genotypes",
-        y = "Fis (Wright's Inbreeding Coefficient)") +
+           x = "Percentage of Missing Genotypes",
+           y = "Fis (Wright's Inbreeding Coefficient)") +
       theme_ipsum()
-
+    
     # Define the output$plot_output to render the plot
     output$plot_output <- renderPlot({
       plot_FIS
@@ -458,7 +438,7 @@ print(lapply(result_stats, function(x)
       }
     )
   })
-
+  
   # Bootstrap on Loci Analysis
   observeEvent(input$run_boot_loci, {
     withProgress(message = 'Running Bootstrap on Loci', value = 0, {
@@ -493,7 +473,7 @@ print(lapply(result_stats, function(x)
         boot_results_by_pop[[param]] <- array(NA, dim = c(n_boot, n_pops), 
                                               dimnames = list(NULL, unique(mydata_hierfstat_a[,1])))
         boot_results_by_locus[[param]] <- array(NA, dim = c(n_boot, n_loci),
-                                               dimnames = list(NULL, colnames(mydata_hierfstat_a)[-1]))
+                                                dimnames = list(NULL, colnames(mydata_hierfstat_a)[-1]))
         boot_results_overall[[param]] <- numeric(n_boot)
       }
       
@@ -627,10 +607,10 @@ print(lapply(result_stats, function(x)
           Upper_CI = numeric(0),
           stringsAsFactors = FALSE
         )
-
-# server_general_stats_part3.R
-# Continuation de la partie 2
-
+        
+        # server_general_stats_part3.R
+        # Continuation de la partie 2
+        
         for(param in selected_params) {
           for(locus in colnames(boot_results_by_locus[[param]])) {
             values <- boot_results_by_locus[[param]][, locus]
@@ -717,7 +697,7 @@ print(lapply(result_stats, function(x)
       
     })
   })
-
+  
   # Bootstrap on Populations Analysis
   observeEvent(input$run_boot_pop, {
     withProgress(message = 'Running Bootstrap on Populations', value = 0, {
@@ -751,7 +731,7 @@ print(lapply(result_stats, function(x)
       
       for(param in selected_params) {
         boot_results_by_locus[[param]] <- array(NA, dim = c(n_boot, n_loci),
-                                               dimnames = list(NULL, colnames(mydata_hierfstat_a)[-1]))
+                                                dimnames = list(NULL, colnames(mydata_hierfstat_a)[-1]))
         boot_results_overall[[param]] <- numeric(n_boot)
       }
       
@@ -950,7 +930,7 @@ print(lapply(result_stats, function(x)
       
     })
   })
-
+  
   # Local Panmixia Permutation Test
   observeEvent(input$run_perm_local, {
     withProgress(message = 'Running Local Panmixia Test', value = 0, {
@@ -973,7 +953,7 @@ print(lapply(result_stats, function(x)
       
       # Storage for permutation results
       perm_fis_by_pop_locus <- array(NA, dim = c(n_perm, n_pops, n_loci),
-                                    dimnames = list(NULL, populations, loci_names))
+                                     dimnames = list(NULL, populations, loci_names))
       
       for(perm_i in 1:n_perm) {
         if(perm_i %% 1000 == 0) {
@@ -1040,7 +1020,7 @@ print(lapply(result_stats, function(x)
       
       # Calculate p-values
       pvalues_by_pop_locus <- array(NA, dim = c(n_pops, n_loci),
-                                   dimnames = list(populations, loci_names))
+                                    dimnames = list(populations, loci_names))
       pvalues_mean_by_pop <- numeric(n_pops)
       names(pvalues_mean_by_pop) <- populations
       pvalues_mean_by_locus <- numeric(n_loci)
@@ -1114,10 +1094,10 @@ print(lapply(result_stats, function(x)
       
     })
   })
-
-# server_general_stats_part4.R
-# Continuation de la partie 3 et fin du serveur
-
+  
+  # server_general_stats_part4.R
+  # Continuation de la partie 3 et fin du serveur
+  
   # Global Panmixia Permutation Test
   observeEvent(input$run_perm_global, {
     withProgress(message = 'Running Global Panmixia Test', value = 0, {
@@ -1136,7 +1116,7 @@ print(lapply(result_stats, function(x)
       
       # Storage for permutation results
       perm_fit_by_locus <- array(NA, dim = c(n_perm, n_loci),
-                                dimnames = list(NULL, loci_names))
+                                 dimnames = list(NULL, loci_names))
       perm_fit_overall <- numeric(n_perm)
       
       for(perm_i in 1:n_perm) {
@@ -1239,7 +1219,7 @@ print(lapply(result_stats, function(x)
       
     })
   })
-
+  
   # Population Subdivision Permutation Test
   observeEvent(input$run_perm_subdiv, {
     withProgress(message = 'Running Population Subdivision Test', value = 0, {
@@ -1287,7 +1267,7 @@ print(lapply(result_stats, function(x)
         # Create contingency table
         if(length(unique_alleles) > 1) {
           contingency_matrix <- matrix(0, nrow = n_pops, ncol = length(unique_alleles),
-                                     dimnames = list(populations, as.character(unique_alleles)))
+                                       dimnames = list(populations, as.character(unique_alleles)))
           
           for(pop_idx in 1:n_pops) {
             pop <- populations[pop_idx]
@@ -1335,7 +1315,7 @@ print(lapply(result_stats, function(x)
         } else {
           observed_G_by_locus[locus_idx] <- 0
           contingency_tables[[locus_name]] <- matrix(0, nrow = n_pops, ncol = 1,
-                                                   dimnames = list(populations, "No_variation"))
+                                                     dimnames = list(populations, "No_variation"))
         }
       }
       
@@ -1345,7 +1325,7 @@ print(lapply(result_stats, function(x)
       
       # Storage for permutation results
       perm_G_by_locus <- array(NA, dim = c(n_perm, n_loci),
-                              dimnames = list(NULL, loci_names))
+                               dimnames = list(NULL, loci_names))
       perm_G_total <- numeric(n_perm)
       
       for(perm_i in 1:n_perm) {
@@ -1384,7 +1364,7 @@ print(lapply(result_stats, function(x)
           
           if(length(unique_alleles) > 1) {
             contingency_matrix <- matrix(0, nrow = n_pops, ncol = length(unique_alleles),
-                                       dimnames = list(populations, as.character(unique_alleles)))
+                                         dimnames = list(populations, as.character(unique_alleles)))
             
             for(pop_idx in 1:n_pops) {
               pop <- populations[pop_idx]
@@ -1474,7 +1454,7 @@ print(lapply(result_stats, function(x)
       
     })
   })
-
+  
   # UI outputs for all permutation tests
   
   # Local Panmixia UI outputs
@@ -1560,7 +1540,7 @@ print(lapply(result_stats, function(x)
       sig_results
     }
   }, rownames = FALSE)
-
+  
   # Global Panmixia UI outputs
   output$perm_global_by_locus <- renderTable({
     req(perm_global_results())
@@ -1627,7 +1607,7 @@ print(lapply(result_stats, function(x)
       sig_results
     }
   }, rownames = FALSE)
-
+  
   # Subdivision UI outputs
   output$perm_subdiv_results <- renderTable({
     req(perm_subdiv_results())
@@ -1694,7 +1674,7 @@ print(lapply(result_stats, function(x)
       sig_results
     }
   }, rownames = FALSE)
-
+  
   # Download handlers for all analyses
   
   # Bootstrap downloads
@@ -1769,7 +1749,7 @@ print(lapply(result_stats, function(x)
       write.csv(result_df, file, row.names = FALSE)
     }
   )
-
+  
   # Summary UI outputs
   output$summary_basic_stats <- renderTable({
     req(result_stats_download())

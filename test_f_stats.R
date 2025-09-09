@@ -1,21 +1,21 @@
 
 #test boot 
 # 
-CSV_BOU <- read.csv("data/filtered_data.csv")
-formatted_data <- list(
-  Population   = formatted_data$Population,
-  individual   = paste0("Ind", "_", substr(formatted_data$Population, 1, 3), "_", row.names(filtered_data)),
-  ploidy       = 2,
-  haplotype    = as.data.frame(CSV_BOU[, 5:10]),   # subset cols 5–10
-  marker       = formatted_data$marker,
-  missing_code = "0/0",
-  GPS          = formatted_data$GPS,
-  level1       = formatted_data$level1,
-  level2       = formatted_data$level2,
-  level3       = formatted_data$level3
-)
-# 
-save(formatted_data, file = "data/formatted_data.RData")
+# CSV_BOU <- read.csv("data/filtered_data.csv")
+# formatted_data <- list(
+#   Population   = formatted_data$Population,
+#   individual   = paste0("Ind", "_", substr(formatted_data$Population, 1, 3), "_", row.names(filtered_data)),
+#   ploidy       = 2,
+#   haplotype    = as.data.frame(CSV_BOU[, 5:10]),   # subset cols 5–10
+#   marker       = formatted_data$marker,
+#   missing_code = "0/0",
+#   GPS          = formatted_data$GPS,
+#   level1       = formatted_data$level1,
+#   level2       = formatted_data$level2,
+#   level3       = formatted_data$level3
+# )
+# # 
+# save(formatted_data, file = "data/formatted_data.RData")
 
 # Load the saved RData object
 load("data/formatted_data.RData") 
