@@ -23,11 +23,9 @@ n_indv <- nrow(formatted_data$haplotype)
 pops <- unique(formatted_data$Population)
 num_cores <- parallel::detectCores()
 missing_data_code <- formatted_data$missing_code
+nloci <- length(unique(colnames(formatted_data$haplotype)))
+loci_names <- unique(colnames(formatted_data$haplotype))
 
-
-# default values bootstrap and randomization
-R <- 1000
-n_rep <- 1000
 
 # Define the server logic
 server_general_stats <- function(input, output, session) {
@@ -39,6 +37,7 @@ server_general_stats <- function(input, output, session) {
   mydata_genind_reac <- reactiveVal(NULL)
   mydata_hierfstat_reac <- reactiveVal(NULL)
   result_stats_download <- reactiveVal(NULL)
+  result_stats_numeric_reactive <- reactiveVal(NULL)
   
   # Bootstrap reactive values
   boot_loci_results <- reactiveVal(NULL)
@@ -123,6 +122,7 @@ server_general_stats <- function(input, output, session) {
   
   # Observe Event for Running the basic.stats
   observeEvent(input$run_basic_stats, {
+    
     # Retrieve reactive value
     mydata_hierfstat_a <- mydata_hierfstat_reac()
     mydata_genind_a <- mydata_genind_reac()
@@ -219,9 +219,9 @@ server_general_stats <- function(input, output, session) {
           df_result_basic$`Fst'` <- fst_prime_values
           
           # Diagnostic information
-          cat("Fst (W&C) values:", fst_wc_values, "\n")
-          cat("Fst-max values:", fst_max_values, "\n")
-          cat("Fst' values:", fst_prime_values, "\n")
+          # cat("Fst (W&C) values:", fst_wc_values, "\n")
+          # cat("Fst-max values:", fst_max_values, "\n")
+          # cat("Fst' values:", fst_prime_values, "\n")
           
           # Check for potential issues
           if(any(fst_prime_values > 1.1, na.rm = TRUE)) {
@@ -293,7 +293,7 @@ server_general_stats <- function(input, output, session) {
       result_stats_download(NULL)
       result_stats_numeric_reactive(NULL)
     }
-
+4 
     output$basic_stats_result <- renderTable({
       req(result_stats_download())
       result_stats_download()   
@@ -440,6 +440,7 @@ server_general_stats <- function(input, output, session) {
   })
   
   # Bootstrap on Loci Analysis
+  # ---------- 1) permute alleles within populations (FIS null) ----------
   observeEvent(input$run_boot_loci, {
     withProgress(message = 'Running Bootstrap on Loci', value = 0, {
       
@@ -491,12 +492,41 @@ server_general_stats <- function(input, output, session) {
         
         tryCatch({
           # Calculate basic stats for this bootstrap sample
-          boot_basic <- basic.stats(boot_data)
+          # boot_basic <- basic.stats(boot_data) We need FiS and FIT the randomisation of FIS is on and the randomisation  of FIT is on ? 
+# no need to basic.stats? NO
+
+          # 
+          # # Define the function for the bootstrap (server_general_stats)
+          # boot_fonction <- function(data, indices, columns) {
+          #   subset_data <- as.data.frame(data[indices, columns, drop = FALSE])
+          #   subset_data <- adegenet::df2genind(
+          #     X = as.matrix(subset_data),
+          #     sep = "/",
+          #     ncode = 6,
+          #     ind.names = data$indv,
+          #     pop = data$Population, # data Level
+          #     NA.char = "0/0",
+          #     ploidy = 2,
+          #     type = "codom",
+          #     strata = NULL,
+          #     hierarchy = NULL
+          #   )
+          #   fst_results <- as.data.frame(pegas::Fst(pegas::as.loci(subset_data)))
+          #   results_mat <- fst_results %>%
+          #     select(Fis) %>% # Ajouter FIT, FST, FST-max, Hs et Ht
+          #     as.matrix()
+          #   return(results_mat)
+          # }         
+          
+          
+print("boot_basic")
+print(boot_basic)
+print("boot_data")
+print(boot_data)          
           
           # Calculate Weir & Cockerham stats
           boot_genind <- hierfstat2genind(boot_data)
-          boot_loci_data <- as.loci(boot_genind)
-          boot_wc <- Fst(boot_loci_data)
+          boot_wc <- Fst(as.loci(boot_genind))
           
           # Extract results by population
           if("FIS_WC" %in% selected_params) {
