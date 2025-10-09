@@ -1,4 +1,7 @@
-# helper.R
+# helper.R - Fonctions pour l'analyse de données génétiques
+# Conservation de tous les noms de fonctions existants
+
+# -------------------- IMPORTATION ET PRÉPARATION DES DONNÉES --------------------
 
 # Corrected function for concatenate the alleles in columns (server_importdata)
 concat_identical_cols <- function(df, ploidy) {
@@ -59,24 +62,24 @@ renderInfoBoxUI <- function(title, value, icon_name, color) {
 
 # Define the function for the bootstrap (server_general_stats)
 boot_fonction <- function(data, indices, columns) {
-      subset_data <- as.data.frame(data[indices, columns, drop = FALSE])
-      subset_data <- adegenet::df2genind(
-        X = as.matrix(subset_data),
-        sep = "/",
-        ncode = 6,
-        ind.names = data$indv,
-        pop = data$Population, # data Level
-        NA.char = "0/0",
-        ploidy = 2,
-        type = "codom",
-        strata = NULL,
-        hierarchy = NULL
-      )
-      fst_results <- as.data.frame(pegas::Fst(pegas::as.loci(subset_data)))
-      results_mat <- fst_results %>%
-        select(Fis) %>% # Ajouter FIT, FST, FST-max, Hs et Ht
-        as.matrix()
-      return(results_mat)
+  subset_data <- as.data.frame(data[indices, columns, drop = FALSE])
+  subset_data <- adegenet::df2genind(
+    X = as.matrix(subset_data),
+    sep = "/",
+    ncode = 6,
+    ind.names = data$indv,
+    pop = data$Population, # data Level
+    NA.char = "0/0",
+    ploidy = 2,
+    type = "codom",
+    strata = NULL,
+    hierarchy = NULL
+  )
+  fst_results <- as.data.frame(pegas::Fst(pegas::as.loci(subset_data)))
+  results_mat <- fst_results %>%
+    select(Fis) %>% # Ajouter FIT, FST, FST-max, Hs et Ht
+    as.matrix()
+  return(results_mat)
 }
 
 col_to_rowname <- function(df, colname = "Row.names") {
@@ -105,8 +108,8 @@ format_numeric_cols <- function(df, digits = 5, exclude = "Locus") {
   df
 }
 
+# -------------------- ÉQUILIBRE DE LIAISON (LINKAGE DISEQUILIBRIUM) --------------------
 
-# Linkage Disequilibrium
 # Function to create contingency tables for each population
 create_contingency_tables <- function(data, loci, include_missing = TRUE) {
   populations <- unique(data$Population)
@@ -251,4 +254,211 @@ randomized_g_stats <- function(data, loci, n_simulations, calculate_g_stat, incl
   return(do.call(c, results))
 }
 
+# -------------------- FONCTIONS UTILITAIRES AMÉLIORÉES --------------------
 
+#' Valide la structure des données génétiques
+#' 
+#' @param data DataFrame à valider
+#' @param required_cols Colonnes requises
+#' @return TRUE si valide, erreur sinon
+validate_genetic_data <- function(data, required_cols = c("Population", "indv")) {
+  if (!is.data.frame(data)) {
+    stop("Les données doivent être un dataframe")
+  }
+  
+  missing_cols <- setdiff(required_cols, names(data))
+  if (length(missing_cols) > 0) {
+    stop("Colonnes manquantes: ", paste(missing_cols, collapse = ", "))
+  }
+  
+  if (nrow(data) == 0) {
+    stop("Le dataframe est vide")
+  }
+  
+  return(TRUE)
+}
+
+#' Sauvegarde les résultats avec horodatage
+#' 
+#' @param object Objet à sauvegarder
+#' @param prefix Préfixe du fichier
+#' @param path Chemin de sauvegarde
+save_results <- function(object, prefix = "results", path = ".") {
+  timestamp <- format(Sys.time(), "%Y%m%d_%H%M%S")
+  filename <- file.path(path, paste0(prefix, "_", timestamp, ".rds"))
+  saveRDS(object, filename)
+  return(filename)
+}
+
+#' Formate un nombre avec un nombre fixe de décimales
+#' 
+#' @param x Nombre à formater
+#' @param digits Nombre de décimales
+#' @return Chaîne formatée
+format_fixed <- function(x, digits = 5) {
+  ifelse(is.na(x), "NA", sprintf(paste0("%.", digits, "f"), x))
+}
+
+#' Calcule les statistiques descriptives de base
+#' 
+#' @param x Vecteur numérique
+#' @return Liste avec moyenne, écart-type, etc.
+basic_stats <- function(x) {
+  x <- x[!is.na(x)]
+  if (length(x) == 0) return(list(mean = NA, sd = NA, n = 0))
+  
+  list(
+    mean = mean(x),
+    sd = sd(x),
+    n = length(x),
+    min = min(x),
+    max = max(x),
+    median = median(x)
+  )
+}
+
+#' Vérifie si un package est installé et le charge
+#' 
+#' @param package Nom du package
+#' @param load Si TRUE, charge le package
+#' @return TRUE si le package est disponible
+check_package <- function(package, load = TRUE) {
+  if (!requireNamespace(package, quietly = TRUE)) {
+    stop("Le package '", package, "' n'est pas installé")
+  }
+  if (load) {
+    library(package, character.only = TRUE)
+  }
+  return(TRUE)
+}
+
+#' Crée un graphique ggplot2 standardisé
+#' 
+#' @param data Données pour le graphique
+#' @param x Variable x
+#' @param y Variable y
+#' @param type Type de graphique ("point", "bar", "line")
+#' @return Objet ggplot
+create_standard_plot <- function(data, x, y, type = "point") {
+  if (!requireNamespace("ggplot2", quietly = TRUE)) {
+    stop("Le package ggplot2 est requis")
+  }
+  
+  p <- ggplot2::ggplot(data, ggplot2::aes_string(x = x, y = y))
+  
+  switch(type,
+         "point" = p + ggplot2::geom_point(),
+         "bar" = p + ggplot2::geom_bar(stat = "identity"),
+         "line" = p + ggplot2::geom_line(),
+         p + ggplot2::geom_point()  # défaut
+  )
+}
+
+#' Normalise les valeurs entre 0 et 1
+#' 
+#' @param x Vecteur numérique
+#' @return Vecteur normalisé
+normalize <- function(x) {
+  if (all(is.na(x))) return(x)
+  (x - min(x, na.rm = TRUE)) / (max(x, na.rm = TRUE) - min(x, na.rm = TRUE))
+}
+
+#' Calcule la fréquence allélique à partir d'un génotype
+#' 
+#' @param genotype Vecteur de génotypes au format "A/B"
+#' @return DataFrame avec fréquences alléliques
+calculate_allele_freq <- function(genotype) {
+  # Séparer les allèles
+  alleles <- unlist(strsplit(genotype, "/"))
+  alleles <- alleles[!alleles %in% c("0", "NA", "")]
+  
+  if (length(alleles) == 0) return(data.frame(allele = character(), freq = numeric()))
+  
+  freq_table <- table(alleles)
+  data.frame(
+    allele = names(freq_table),
+    freq = as.numeric(freq_table) / length(alleles),
+    stringsAsFactors = FALSE
+  )
+}
+
+#' Convertit un objet genind en dataframe pour l'affichage
+#' 
+#' @param genind_obj Objet genind
+#' @return DataFrame formaté
+genind_to_dataframe <- function(genind_obj) {
+  if (!inherits(genind_obj, "genind")) {
+    stop("L'objet doit être de classe genind")
+  }
+  
+  # Extraire les données de génotype
+  gen_data <- as.data.frame(genind_obj@tab)
+  
+  # Ajouter les métadonnées
+  if (!is.null(genind_obj@pop)) {
+    gen_data$Population <- genind_obj@pop
+  }
+  if (!is.null(genind_obj@ind.names)) {
+    gen_data$Individual <- genind_obj@ind.names
+  }
+  
+  return(gen_data)
+}
+
+#' Calcule la diversité génétique de base par population
+#' 
+#' @param hierfstat_data Données au format hierfstat
+#' @return Liste avec statistiques de diversité
+calculate_diversity_stats <- function(hierfstat_data) {
+  if (!requireNamespace("hierfstat", quietly = TRUE)) {
+    stop("Le package hierfstat est requis")
+  }
+  
+  basic_stats <- hierfstat::basic.stats(hierfstat_data)
+  
+  list(
+    Hs = basic_stats$Hs,  # Hétérozygotie observée
+    Ho = basic_stats$Ho,  # Hétérozygotie attendue
+    Fis = basic_stats$Fis, # Coefficient de consanguinité
+    per_loc = basic_stats$perloc,
+    overall = basic_stats$overall
+  )
+}
+
+#' Version améliorée de concat_identical_cols avec gestion d'erreurs
+concat_identical_cols_enhanced <- function(df, ploidy) {
+  tryCatch({
+    # Validation des entrées
+    if (!is.data.frame(df)) stop("L'entrée doit être un dataframe")
+    if (ncol(df) == 0) stop("Le dataframe est vide")
+    
+    result <- concat_identical_cols(df, ploidy)
+    
+    # Vérification du résultat
+    if (ncol(result) == 0) {
+      warning("Aucune colonne n'a été concaténée")
+    }
+    
+    return(result)
+    
+  }, error = function(e) {
+    stop("Erreur dans concat_identical_cols: ", e$message)
+  })
+}
+
+#' Version sécurisée de boot_fonction
+boot_fonction_safe <- function(data, indices, columns) {
+  tryCatch({
+    # Validation des entrées
+    if (!is.data.frame(data)) stop("data doit être un dataframe")
+    if (length(indices) == 0) stop("indices ne peut pas être vide")
+    if (length(columns) == 0) stop("columns ne peut pas être vide")
+    
+    result <- boot_fonction(data, indices, columns)
+    return(result)
+    
+  }, error = function(e) {
+    warning("Erreur dans boot_fonction: ", e$message)
+    return(matrix(NA, nrow = length(columns), ncol = 1))
+  })
+}

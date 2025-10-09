@@ -5,6 +5,7 @@ suppressPackageStartupMessages({
   library(shinydashboard)
   library(shinydashboardPlus)
   library(shinyalert)
+  library(shinyWidgets)
   library(waiter)
 
   # data manipulation
@@ -13,6 +14,7 @@ suppressPackageStartupMessages({
   library(dplyr)
   library(broom)
   library(reshape2)
+  library(DT)
 
   # population genomics
   library(hierfstat)
@@ -30,8 +32,9 @@ suppressPackageStartupMessages({
   
   # process
   library(parallel)
-  library(foreach)
-  library(doParallel)
+  # library(foreach)
+  # library(doParallel)
+  library(Rcpp)
 })
 
 # Source server and UI files

@@ -1,8 +1,0 @@
-.git
-.Rproj.user
-.Rhistory
-.RData
-renv/library
-data/trash
-.vscode
-.codegpt

@@ -49,23 +49,18 @@ generateImportDataUI <- function() {
         actionButton("run_assign", "Assign metadata", icon = icon("rocket")),
         footer = "* mandatory fields"
       ),
-      mainPanel(
-        infoBoxOutput("box_population", width = 6),
-        infoBoxOutput("box_individuals", width = 6),
-        infoBoxOutput("box_marker", width = 6),
-        infoBoxOutput("box_number_missing_per", width = 6)
-      ),
       box(
         title = "Load Data",
         solidHeader = TRUE,
         height = "2000",
         width = 9,  
         tagList(
-          div(style = "height:500px; overflow-y: scroll; overflow-x: scroll;",
-              tableOutput("data")
+          div(style = "height:550px; overflow-y: scroll; overflow-x: scroll;",
+              DT::dataTableOutput("data")
           ),
           br(),
-          downloadButton("download_csv_raw", "Download Raw Data", class = "btn btn-primary")
+          downloadButton("download_csv_raw", ".csv", class = "btn btn-primary"),
+          downloadButton("download_txt_raw", ".txt", class = "btn btn-outline-primary")
         )
       ),
       box(
@@ -77,28 +72,21 @@ generateImportDataUI <- function() {
               leafletOutput("map")
           ),
           br(),
-          downloadButton("download_map", "Download Map", class = "btn btn-primary")
+          downloadButton("download_map", ".png", class = "btn btn-primary")
         )
       ),
       box(
         title = "Transform Data",
         solidHeader = TRUE,
         height = "2000",
-        width = 9,  
+        width = 9,
         tagList(
-          div(style = "height:500px; overflow-y: scroll; overflow-x: scroll;",
-              tableOutput("contents")
+          div(style = "height:550px; overflow-y: scroll; overflow-x: scroll;",
+              DT::dataTableOutput("contents")
           ),
           br(),
-          downloadButton("download_csv_transformed", "Download Transformed Data", class = "btn btn-primary")
-        )
-      ),
-      box(
-        title = "Population Summary",
-        solidHeader = TRUE,
-        width = 9,  
-        tagList(
-          tableOutput("populationsLL_uniq_table")
+          downloadButton("download_csv_transformed", ".csv", class = "btn btn-primary"),
+          downloadButton("download_txt_transformed", ".txt", class = "btn btn-outline-primary")
         )
       )
     )

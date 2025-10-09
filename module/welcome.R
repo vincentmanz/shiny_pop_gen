@@ -111,8 +111,8 @@ sidebar <- dashboardSidebar(
              tabName = "data", 
              icon = icon("upload", lib = "font-awesome")),
     
-    # NEW: Allele Frequencies Missing Data tab
-    menuItem("Allele Frequencies & Missing Data", 
+    # Allele Frequencies Missing Data tab
+    menuItem("Allele Freq & Missing Data", 
              tabName = "allele_frequencies", 
              icon = icon("chart-pie", lib = "font-awesome")),
     
@@ -220,7 +220,7 @@ body <- dashboardBody(
           )
         )
       ),
-      
+
       # Instructions d'utilisation
       fluidRow(
         box(
@@ -228,13 +228,59 @@ body <- dashboardBody(
           title = "Getting Started",
           solidHeader = TRUE,
           collapsible = TRUE,
-          p(icon("mouse-pointer"), "To begin your analysis:", style = "font-size: 16px;"),
-          tags$ol(
-            style = "font-size: 16px; padding-left: 20px;",
-            tags$li("Import your data using the 'Data Import' tab"),
-            tags$li("Analyze allele frequencies and missing data patterns"),
-            tags$li("Explore basic statistics in the 'General Stats' section"),
-            tags$li("Perform specialized analyses using the other modules")
+          HTML(
+            paste(
+              p(icon("info-circle"), tags$strong("Step-by-step workflow:"), style = "font-size: 16px; margin-bottom: 15px;"),
+              tags$ol(
+                style = "font-size: 16px; line-height: 1.7; padding-left: 25px;",
+                
+                tags$li(
+                  tags$strong("1. Import your data"),
+                  " in the ",
+                  tags$code("Data Import & Filtering"),
+                  " tab."
+                ),
+                
+                tags$li(
+                  tags$strong("2. Explore data quality"),
+                  " in the new ",
+                  tags$code("Allele Frequencies & Missing Data"),
+                  " module."
+                ),
+                
+                tags$li(
+                  tags$strong("3. Compute general statistics"),
+                  " (Ho, Hs, FIS, FST, GST, etc.) in the ",
+                  tags$code("General Statistics"),
+                  " tab."
+                ),
+                
+                tags$li(
+                  tags$strong("4. Run advanced analyses"),
+                  " like bootstrap/permutation tests for FIS, linkage disequilibrium, or genetic drift in the dedicated modules."
+                ),
+                
+                tags$li(
+                  tags$strong("5. Export and report"),
+                  " all results using the built-in download buttons (.csv, .txt, .png) or generate a full analysis report."
+                )
+              ),
+              
+              p(tags$strong("💡 Pro Tips:"), style = "font-size: 16px; margin-top: 20px; margin-bottom: 10px;"),
+              tags$ul(
+                style = "font-size: 15px; line-height: 1.6; padding-left: 25px;",
+                
+                tags$li("Use the default dataset (",
+                        tags$code("BoophilusAdultsDataCattle.csv"),
+                        ") to test the app before uploading your own data."),
+                
+                tags$li("For large datasets, start with a subset to optimize performance."),
+                
+                tags$li("All plots and tables are interactive hover, sort, and filter as needed.")
+              ),
+              
+              sep = ""
+            )
           )
         )
       ),
@@ -341,14 +387,9 @@ body <- dashboardBody(
         )
       )
     ),
-    
-    # Data import tab
+
     tabItem(tabName = "data", generateImportDataUI()),
-    
-    # NEW: Allele Frequencies Missing Data tab
     tabItem(tabName = "allele_frequencies", ui_allele_frequencies()),
-    
-    # Other tabs (unchanged)
     tabItem(tabName = "general_stats", general_stats_UI()),
     tabItem(tabName = "linkage_desequilibrium", linkage_desequilibrium_UI()),
     tabItem(tabName = "drift", generateGeneticDriftUI())
