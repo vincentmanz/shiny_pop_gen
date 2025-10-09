@@ -1,18 +1,12 @@
-# =============================================================================
-# ONGLET : Allele Frequencies Missing Data
-# =============================================================================
+# ui_allele_frequencies.R
 
-# -----------------------------------------------------------------------------
-# UI
-# -----------------------------------------------------------------------------
 ui_allele_frequencies <- function() {
   fluidPage(
-    titlePanel("Fréquences Alléliques et Données Manquantes"),
-    
+    titlePanel("Allele Frequencies and Missing Data"),
     fluidRow(
       column(12,
         wellPanel(
-          h4("Informations Générales"),
+          h4("General Information"),
           fluidRow(
             column(3, 
               valueBoxOutput("total_individuals", width = NULL)
@@ -30,29 +24,73 @@ ui_allele_frequencies <- function() {
         )
       )
     ),
+
+    fluidRow(
+      column(12,
+        box(
+          title = "Data Summary: Sample Sizes, Missing & Genotyped Data",
+          status = "primary",
+          solidHeader = TRUE,
+          width = NULL,
+          tabsetPanel(
+            tabPanel("By Population and Locus",
+              br(),
+              DT::dataTableOutput("data_summary_by_pop_locus"),
+              br(),
+              downloadButton("download_summary_pop_locus", ".csv", class = "btn-primary btn-sm"),
+              downloadButton("download_summary_pop_locus_txt", ".txt", class = "btn-outline-primary btn-sm")
+            ),
+            tabPanel("By Locus (Mean across Populations)",
+              br(),
+              DT::dataTableOutput("data_summary_by_locus_mean"),
+              br(),
+              downloadButton("download_summary_locus_mean", ".csv", class = "btn-primary btn-sm"),
+              downloadButton("download_summary_locus_mean_txt", ".txt", class = "btn-outline-primary btn-sm")
+            ),
+            tabPanel("By Population (Sum across Loci)",
+              br(),
+              DT::dataTableOutput("data_summary_by_pop_sum"),
+              br(),
+              downloadButton("download_summary_pop_sum", ".csv", class = "btn-primary btn-sm"),
+              downloadButton("download_summary_pop_sum_txt", ".txt", class = "btn-outline-primary btn-sm")
+            ),
+            tabPanel("Global (Total across All)",
+              br(),
+              DT::dataTableOutput("data_summary_global"),
+              br(),
+              downloadButton("download_summary_global", ".csv", class = "btn-primary btn-sm"),
+              downloadButton("download_summary_global_txt", ".txt", class = "btn-outline-primary btn-sm")
+            )
+          )
+        )
+      )
+    ),
     
     fluidRow(
       column(6,
         box(
-          title = "Paramètres d'Analyse", status = "primary", solidHeader = TRUE,
+          title = "Analysis Parameters", 
+          status = "primary", 
+          solidHeader = TRUE,
           width = NULL, height = "200px",
           selectInput("selected_population", 
-                     "Sélectionner Population:",
-                     choices = c("Toutes les populations" = "all"),
+                     "Select Population:",
+                     choices = c("All Populations" = "all"),
                      multiple = FALSE),
           selectInput("selected_marker",
-                     "Sélectionner Marqueur:",
+                     "Select Marker:",
                      choices = NULL,
                      multiple = FALSE),
-          actionButton("update_analysis", "Mettre à jour l'analyse", 
+          actionButton("update_analysis", "Update Analysis", 
                       class = "btn-primary")
         )
       ),
       column(6,
         box(
-          title = "Données Manquantes par Population", status = "warning", 
+          title = "Population Summary", 
+          status = "warning", 
           solidHeader = TRUE, width = NULL, height = "200px",
-          tableOutput("missing_data_summary")
+          tableOutput("populations_Summary_table")
         )
       )
     ),
@@ -60,46 +98,47 @@ ui_allele_frequencies <- function() {
     fluidRow(
       column(12,
         box(
-          title = "Fréquences Alléliques", status = "success", 
+          title = "Allele Frequencies", 
+          status = "success", 
           solidHeader = TRUE, width = NULL,
           tabsetPanel(
-            tabPanel("Par Population",
+            tabPanel("By Population",
               br(),
               fluidRow(
                 column(9,
                   DT::dataTableOutput("allele_freq_by_pop")
                 ),
                 column(3,
-                  h5("Actions d'Export"),
+                  h5("Export Options"),
                   downloadButton("download_freq_pop", "Export CSV", 
                                class = "btn-success btn-sm", style = "width: 100%; margin-bottom: 10px;"),
                   downloadButton("download_freq_pop_excel", "Export Excel", 
                                class = "btn-info btn-sm", style = "width: 100%; margin-bottom: 10px;"),
                   br(),
-                  h5("Statistiques Rapides"),
+                  h5("Quick Statistics"),
                   verbatimTextOutput("quick_stats_pop", placeholder = TRUE)
                 )
               )
             ),
-            tabPanel("Globales",
+            tabPanel("By Locus",
               br(),
               fluidRow(
                 column(9,
                   DT::dataTableOutput("allele_freq_global")
                 ),
                 column(3,
-                  h5("Actions d'Export"),
+                  h5("Export Options"),
                   downloadButton("download_freq_global", "Export CSV", 
                                class = "btn-success btn-sm", style = "width: 100%; margin-bottom: 10px;"),
                   downloadButton("download_freq_global_excel", "Export Excel", 
                                class = "btn-info btn-sm", style = "width: 100%; margin-bottom: 10px;"),
                   br(),
-                  h5("Statistiques Globales"),
+                  h5("Global Statistics"),
                   verbatimTextOutput("quick_stats_global", placeholder = TRUE)
                 )
               )
             ),
-            tabPanel("Graphiques",
+            tabPanel("Plots",
               br(),
               fluidRow(
                 column(6,
@@ -118,72 +157,6 @@ ui_allele_frequencies <- function() {
                   plotOutput("allele_richness_plot", height = "400px")
                 )
               )
-            ),
-            tabPanel("Diversité Génétique",
-              br(),
-              fluidRow(
-                column(8,
-                  DT::dataTableOutput("genetic_diversity_table")
-                ),
-                column(4,
-                  h5("Indices de Diversité"),
-                  p("He : Hétérozygotie attendue"),
-                  p("Ho : Hétérozygotie observée"),
-                  p("Na : Nombre d'allèles"),
-                  p("Ne : Nombre effectif d'allèles"),
-                  p("Fis : Coefficient de consanguinité"),
-                  br(),
-                  downloadButton("download_diversity", "Export Diversité", 
-                               class = "btn-warning btn-sm", style = "width: 100%;")
-                )
-              )
-            ),
-            tabPanel("Matrice Allélique",
-              br(),
-              fluidRow(
-                column(12,
-                  h4("Matrice Présence/Absence des Allèles par Population"),
-                  DT::dataTableOutput("allele_matrix")
-                )
-              ),
-              br(),
-              fluidRow(
-                column(6,
-                  downloadButton("download_matrix", "Export Matrice", 
-                               class = "btn-primary btn-sm")
-                ),
-                column(6,
-                  plotOutput("allele_sharing_heatmap", height = "300px")
-                )
-              )
-            )
-          )
-        )
-      )
-    ),
-    
-    fluidRow(
-      column(6,
-        box(
-          title = "Détails par Marqueur", status = "info", 
-          solidHeader = TRUE, width = NULL,
-          DT::dataTableOutput("marker_details")
-        )
-      ),
-      column(6,
-        box(
-          title = "Analyse de Qualité des Données", status = "warning", 
-          solidHeader = TRUE, width = NULL,
-          tabsetPanel(
-            tabPanel("Résumé Qualité",
-              br(),
-              DT::dataTableOutput("data_quality_summary")
-            ),
-            tabPanel("Allèles Rares",
-              br(),
-              numericInput("rare_threshold", "Seuil fréquence rare (%):", 
-                         value = 5, min = 1, max = 20, step = 1),
-              DT::dataTableOutput("rare_alleles_table")
             )
           )
         )
@@ -193,38 +166,10 @@ ui_allele_frequencies <- function() {
     fluidRow(
       column(12,
         box(
-          title = "Outils de Filtrage et Nettoyage", status = "danger", 
-          solidHeader = TRUE, width = NULL, collapsible = TRUE, collapsed = TRUE,
-          fluidRow(
-            column(3,
-              h5("Filtres de Qualité"),
-              numericInput("min_sample_size", "Taille min. échantillon:", 
-                         value = 5, min = 1, max = 50),
-              numericInput("max_missing_percent", "Max % données manquantes:", 
-                         value = 50, min = 0, max = 100)
-            ),
-            column(3,
-              h5("Filtres Alléliques"),
-              numericInput("min_allele_freq", "Fréq. allélique min. (%):", 
-                         value = 1, min = 0, max = 50, step = 0.5),
-              checkboxInput("remove_monomorphic", "Exclure marqueurs monomorphes", value = FALSE)
-            ),
-            column(3,
-              h5("Sélection Populations"),
-              checkboxGroupInput("populations_to_include", "Populations à inclure:",
-                               choices = NULL, selected = NULL)
-            ),
-            column(3,
-              h5("Actions"),
-              br(),
-              actionButton("apply_filters", "Appliquer Filtres", 
-                         class = "btn-warning", style = "width: 100%; margin-bottom: 10px;"),
-              downloadButton("download_filtered_data", "Export Données Filtrées", 
-                           class = "btn-danger", style = "width: 100%; margin-bottom: 10px;"),
-              actionButton("reset_filters", "Reset Filtres", 
-                         class = "btn-secondary", style = "width: 100%;")
-            )
-          )
+          title = "Marker Details", 
+          status = "info", 
+          solidHeader = TRUE, width = NULL,
+          DT::dataTableOutput("marker_details")
         )
       )
     )

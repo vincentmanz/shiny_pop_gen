@@ -1,6 +1,5 @@
-# -----------------------------------------------------------------------------
 # SERVER
-# -----------------------------------------------------------------------------
+
 server_allele_frequencies <- function(input, output, session) {
   
   # Variables globales (héritées de la page précédente)
@@ -372,10 +371,6 @@ server_allele_frequencies <- function(input, output, session) {
                                                         c("#e8f5e8", "#fff3e0", "#ffebee")))
   })
   
-  # =============================================================================
-  # NOUVELLES FONCTIONNALITÉS AJOUTÉES
-  # =============================================================================
-  
   # Calcul des indices de diversité génétique
   calculate_genetic_diversity <- reactive({
     req(input$update_analysis)
@@ -439,129 +434,6 @@ server_allele_frequencies <- function(input, output, session) {
     }
     
     diversity_results
-  })
-  
-  # Matrice présence/absence des allèles
-  calculate_allele_matrix <- reactive({
-    req(input$update_analysis)
-    freq_data <- calculate_allele_frequencies()
-    
-    # Obtenir tous les allèles uniques par marqueur
-    matrix_list <- list()
-    
-    for (marker in marker_names) {
-      marker_data <- freq_data$by_pop[freq_data$by_pop$Marqueur == marker, ]
-      all_alleles <- unique(marker_data$Allele)
-      
-      # Créer matrice pour ce marqueur
-      marker_matrix <- matrix(0, nrow = length(pops), ncol = length(all_alleles),
-                             dimnames = list(pops, paste0(marker, "_", all_alleles)))
-      
-      for (i in seq_along(pops)) {
-        pop_alleles <- marker_data[marker_data$Population == pops[i], "Allele"]
-        marker_matrix[i, paste0(marker, "_", pop_alleles)] <- 1
-      }
-      
-      matrix_list[[marker]] <- marker_matrix
-    }
-    
-    # Combiner toutes les matrices
-    full_matrix <- do.call(cbind, matrix_list)
-    as.data.frame(full_matrix)
-  })
-  
-  # Analyse des allèles rares
-  calculate_rare_alleles <- reactive({
-    req(input$rare_threshold)
-    freq_data <- calculate_allele_frequencies()
-    
-    rare_alleles <- freq_data$global[freq_data$global$Frequence < (input$rare_threshold / 100), ]
-    rare_alleles$Frequence_pct <- round(rare_alleles$Frequence * 100, 2)
-    rare_alleles[order(rare_alleles$Frequence), ]
-  })
-  
-  # Analyse de qualité des données
-  calculate_data_quality <- reactive({
-    missing_data <- calculate_missing_data()
-    freq_data <- calculate_allele_frequencies()
-    
-    quality_summary <- data.frame()
-    
-    for (pop in pops) {
-      pop_missing <- missing_data[missing_data$Population == pop, ]
-      pop_size <- nrow(filtered_data[filtered_data$Population == pop, ])
-      
-      avg_missing <- round(mean(pop_missing$Pourcentage_manquant), 2)
-      markers_with_data <- sum(pop_missing$Pourcentage_manquant < 100)
-      
-      quality_summary <- rbind(quality_summary, data.frame(
-        Population = pop,
-        Taille_echantillon = pop_size,
-        Marqueurs_avec_donnees = markers_with_data,
-        Moyenne_manquant_pct = avg_missing,
-        Qualite = case_when(
-          avg_missing < 10 ~ "Excellente",
-          avg_missing < 25 ~ "Bonne", 
-          avg_missing < 50 ~ "Moyenne",
-          TRUE ~ "Faible"
-        ),
-        stringsAsFactors = FALSE
-      ))
-    }
-    
-    quality_summary
-  })
-  
-  # Outputs pour la diversité génétique
-  output$genetic_diversity_table <- DT::renderDataTable({
-    diversity_data <- calculate_genetic_diversity()
-    
-    DT::datatable(diversity_data,
-                  options = list(pageLength = 15, scrollX = TRUE),
-                  rownames = FALSE) %>%
-      DT::formatStyle(c("He", "Ho", "Fis"),
-                     backgroundColor = DT::styleInterval(c(0.3, 0.6),
-                                                        c("#ffebee", "#fff3e0", "#e8f5e8")))
-  })
-  
-  # Output pour la matrice allélique
-  output$allele_matrix <- DT::renderDataTable({
-    matrix_data <- calculate_allele_matrix()
-    
-    DT::datatable(matrix_data,
-                  options = list(pageLength = 10, scrollX = TRUE, dom = 't'),
-                  rownames = TRUE) %>%
-      DT::formatStyle(names(matrix_data),
-                     backgroundColor = DT::styleEqual(1, "#4CAF50"),
-                     color = DT::styleEqual(1, "white"))
-  })
-  
-  # Output pour les allèles rares
-  output$rare_alleles_table <- DT::renderDataTable({
-    rare_data <- calculate_rare_alleles()
-    
-    DT::datatable(rare_data[, c("Marqueur", "Allele", "Frequence_pct", "Count", "N_total")],
-                  options = list(pageLength = 10),
-                  rownames = FALSE,
-                  colnames = c("Marqueur", "Allèle", "Fréquence (%)", "Effectif", "Total")) %>%
-      DT::formatStyle("Frequence_pct",
-                     backgroundColor = DT::styleInterval(c(1, 3),
-                                                        c("#ffcdd2", "#ffecb3", "#fff3e0")))
-  })
-  
-  # Output pour la qualité des données
-  output$data_quality_summary <- DT::renderDataTable({
-    quality_data <- calculate_data_quality()
-    
-    DT::datatable(quality_data,
-                  options = list(pageLength = 10, dom = 't'),
-                  rownames = FALSE) %>%
-      DT::formatStyle("Qualite",
-                     backgroundColor = DT::styleEqual(
-                       c("Excellente", "Bonne", "Moyenne", "Faible"),
-                       c("#4CAF50", "#8BC34A", "#FF9800", "#F44336")
-                     ),
-                     color = "white")
   })
   
   # Statistiques rapides
@@ -650,29 +522,6 @@ server_allele_frequencies <- function(input, output, session) {
     }
   })
   
-  output$allele_sharing_heatmap <- renderPlot({
-    matrix_data <- calculate_allele_matrix()
-    
-    if (nrow(matrix_data) > 0) {
-      # Calculer similarité entre populations
-      similarity_matrix <- cor(t(as.matrix(matrix_data)), use = "complete.obs")
-      
-      # Convertir en format long pour ggplot
-      library(reshape2)
-      sim_long <- melt(similarity_matrix)
-      
-      library(ggplot2)
-      ggplot(sim_long, aes(Var1, Var2, fill = value)) +
-        geom_tile() +
-        scale_fill_gradient2(low = "blue", high = "red", mid = "white", 
-                           midpoint = 0, name = "Similarité") +
-        labs(title = "Partage d'Allèles entre Populations",
-             x = "Population", y = "Population") +
-        theme_minimal() +
-        theme(axis.text.x = element_text(angle = 45, hjust = 1))
-    }
-  })
-  
   # Fonctions de téléchargement
   output$download_freq_pop <- downloadHandler(
     filename = function() {
@@ -693,24 +542,235 @@ server_allele_frequencies <- function(input, output, session) {
       write.csv(freq_data$global, file, row.names = FALSE)
     }
   )
-  
-  output$download_diversity <- downloadHandler(
-    filename = function() {
-      paste0("diversite_genetique_", Sys.Date(), ".csv")
-    },
+
+  # 1. Par Population et Locus
+  output$data_summary_by_pop_locus <- DT::renderDataTable({
+    missing_data <- calculate_missing_data()
+    if (nrow(missing_data) == 0) {
+      return(DT::datatable(data.frame(Message = "Aucune donnée disponible")))
+    }
+    
+    # Ajouter les données génotypées
+    missing_data$Donnees_genotypees <- missing_data$N_individus - missing_data$Donnees_manquantes
+    
+    DT::datatable(
+      missing_data[, c("Population", "Marqueur", "N_individus", "Donnees_genotypees", "Donnees_manquantes", "Pourcentage_manquant")],
+      options = list(pageLength = 15, scrollX = TRUE),
+      rownames = FALSE,
+      colnames = c("Population", "Locus", "Effectif Total", "Génotypés", "Manquants", "% Manquants")
+    ) %>%
+      DT::formatRound("Pourcentage_manquant", 2)
+  })
+
+  # 2. Par Locus (Moyenne sur Populations)
+  output$data_summary_by_locus_mean <- DT::renderDataTable({
+    missing_data <- calculate_missing_data()
+    if (nrow(missing_data) == 0) {
+      return(DT::datatable(data.frame(Message = "Aucune donnée disponible")))
+    }
+    
+    summary_locus <- aggregate(cbind(N_individus, Donnees_manquantes) ~ Marqueur, 
+                              data = missing_data, FUN = mean)
+    summary_locus$Donnees_genotypees <- summary_locus$N_individus - summary_locus$Donnees_manquantes
+    summary_locus$Pourcentage_manquant <- (summary_locus$Donnees_manquantes / summary_locus$N_individus) * 100
+    
+    DT::datatable(
+      summary_locus[, c("Marqueur", "N_individus", "Donnees_genotypees", "Donnees_manquantes", "Pourcentage_manquant")],
+      options = list(pageLength = 15, scrollX = TRUE),
+      rownames = FALSE,
+      colnames = c("Locus", "Moy. Effectif", "Moy. Génotypés", "Moy. Manquants", "Moy. % Manquants")
+    ) %>%
+      DT::formatRound(c("N_individus", "Donnees_genotypees", "Donnees_manquantes", "Pourcentage_manquant"), 2)
+  })
+
+  # 3. Par Population (Somme sur Locus)
+  output$data_summary_by_pop_sum <- DT::renderDataTable({
+    missing_data <- calculate_missing_data()
+    if (nrow(missing_data) == 0) {
+      return(DT::datatable(data.frame(Message = "Aucune donnée disponible")))
+    }
+    
+    summary_pop <- aggregate(cbind(N_individus, Donnees_manquantes) ~ Population, 
+                            data = missing_data, FUN = sum)
+    summary_pop$Donnees_genotypees <- summary_pop$N_individus - summary_pop$Donnees_manquantes
+    summary_pop$Pourcentage_manquant <- (summary_pop$Donnees_manquantes / summary_pop$N_individus) * 100
+    
+    DT::datatable(
+      summary_pop[, c("Population", "N_individus", "Donnees_genotypees", "Donnees_manquantes", "Pourcentage_manquant")],
+      options = list(pageLength = 15, scrollX = TRUE),
+      rownames = FALSE,
+      colnames = c("Population", "Total Effectif", "Total Génotypés", "Total Manquants", "Moy. % Manquants")
+    ) %>%
+      DT::formatRound(c("N_individus", "Donnees_genotypees", "Donnees_manquantes", "Pourcentage_manquant"), 2)
+  })
+
+  # 4. Global (Somme sur Tous)
+  output$data_summary_global <- DT::renderDataTable({
+    missing_data <- calculate_missing_data()
+    if (nrow(missing_data) == 0) {
+      return(DT::datatable(data.frame(Message = "Aucune donnée disponible")))
+    }
+    
+    total_indiv <- sum(missing_data$N_individus)
+    total_missing <- sum(missing_data$Donnees_manquantes)
+    total_genotyped <- total_indiv - total_missing
+    pct_missing <- (total_missing / total_indiv) * 100
+    
+    global_summary <- data.frame(
+      Total_Individus = total_indiv,
+      Total_Genotypes = total_genotyped,
+      Total_Manquants = total_missing,
+      Pourcentage_Manquants = round(pct_missing, 2)
+    )
+    
+    DT::datatable(
+      global_summary,
+      options = list(dom = 't'),
+      rownames = FALSE,
+      colnames = c("Total Individus", "Total Génotypes", "Total Manquants", "% Manquants")
+    )
+  })
+
+  # Téléchargements
+  output$download_summary_pop_locus <- downloadHandler(
+    filename = function() paste0("summary_pop_locus_", Sys.Date(), ".csv"),
     content = function(file) {
-      diversity_data <- calculate_genetic_diversity()
-      write.csv(diversity_data, file, row.names = FALSE)
+      missing_data <- calculate_missing_data()
+      missing_data$Donnees_genotypees <- missing_data$N_individus - missing_data$Donnees_manquantes
+      write.csv(missing_data, file, row.names = FALSE)
     }
   )
-  
-  output$download_matrix <- downloadHandler(
-    filename = function() {
-      paste0("matrice_allelique_", Sys.Date(), ".csv")
-    },
+
+  output$download_summary_locus_mean <- downloadHandler(
+    filename = function() paste0("summary_locus_mean_", Sys.Date(), ".csv"),
     content = function(file) {
-      matrix_data <- calculate_allele_matrix()
-      write.csv(matrix_data, file, row.names = TRUE)
+      missing_data <- calculate_missing_data()
+      summary_locus <- aggregate(cbind(N_individus, Donnees_manquantes) ~ Marqueur, data = missing_data, FUN = mean)
+      summary_locus$Donnees_genotypees <- summary_locus$N_individus - summary_locus$Donnees_manquantes
+      summary_locus$Pourcentage_manquant <- (summary_locus$Donnees_manquantes / summary_locus$N_individus) * 100
+      write.csv(summary_locus, file, row.names = FALSE)
+    }
+  )
+
+  output$download_summary_pop_sum <- downloadHandler(
+    filename = function() paste0("summary_pop_sum_", Sys.Date(), ".csv"),
+    content = function(file) {
+      missing_data <- calculate_missing_data()
+      summary_pop <- aggregate(cbind(N_individus, Donnees_manquantes) ~ Population, data = missing_data, FUN = sum)
+      summary_pop$Donnees_genotypees <- summary_pop$N_individus - summary_pop$Donnees_manquantes
+      summary_pop$Pourcentage_manquant <- (summary_pop$Donnees_manquantes / summary_pop$N_individus) * 100
+      write.csv(summary_pop, file, row.names = FALSE)
+    }
+  )
+
+  output$download_summary_global <- downloadHandler(
+    filename = function() paste0("summary_global_", Sys.Date(), ".csv"),
+    content = function(file) {
+      missing_data <- calculate_missing_data()
+      total_indiv <- sum(missing_data$N_individus)
+      total_missing <- sum(missing_data$Donnees_manquantes)
+      total_genotyped <- total_indiv - total_missing
+      pct_missing <- (total_missing / total_indiv) * 100
+      global_summary <- data.frame(
+        Total_Individus = total_indiv,
+        Total_Genotypes = total_genotyped,
+        Total_Manquants = total_missing,
+        Pourcentage_Manquants = round(pct_missing, 2)
+      )
+      write.csv(global_summary, file, row.names = FALSE)
+    }
+  )
+
+  # 1. Par Population et Locus (.txt)
+  output$download_summary_pop_locus_txt <- downloadHandler(
+    filename = function() paste0("summary_pop_locus_", Sys.Date(), ".txt"),
+    content = function(file) {
+      missing_data <- calculate_missing_data()
+      if (nrow(missing_data) == 0) {
+        write.table(data.frame(Message = "Aucune donnée disponible"), file, sep = "\t", row.names = FALSE, quote = FALSE)
+        return()
+      }
+      missing_data$Donnees_genotypees <- missing_data$N_individus - missing_data$Donnees_manquantes
+      write.table(
+        missing_data[, c("Population", "Marqueur", "N_individus", "Donnees_genotypees", "Donnees_manquantes", "Pourcentage_manquant")],
+        file,
+        sep = "\t",
+        row.names = FALSE,
+        quote = FALSE
+      )
+    }
+  )
+
+  # 2. Par Locus (Moyenne sur Populations) (.txt)
+  output$download_summary_locus_mean_txt <- downloadHandler(
+    filename = function() paste0("summary_locus_mean_", Sys.Date(), ".txt"),
+    content = function(file) {
+      missing_data <- calculate_missing_data()
+      if (nrow(missing_data) == 0) {
+        write.table(data.frame(Message = "Aucune donnée disponible"), file, sep = "\t", row.names = FALSE, quote = FALSE)
+        return()
+      }
+      summary_locus <- aggregate(cbind(N_individus, Donnees_manquantes) ~ Marqueur, data = missing_data, FUN = mean)
+      summary_locus$Donnees_genotypees <- summary_locus$N_individus - summary_locus$Donnees_manquantes
+      summary_locus$Pourcentage_manquant <- (summary_locus$Donnees_manquantes / summary_locus$N_individus) * 100
+      write.table(
+        summary_locus[, c("Marqueur", "N_individus", "Donnees_genotypees", "Donnees_manquantes", "Pourcentage_manquant")],
+        file,
+        sep = "\t",
+        row.names = FALSE,
+        quote = FALSE
+      )
+    }
+  )
+
+  # 3. Par Population (Somme sur Locus) (.txt)
+  output$download_summary_pop_sum_txt <- downloadHandler(
+    filename = function() paste0("summary_pop_sum_", Sys.Date(), ".txt"),
+    content = function(file) {
+      missing_data <- calculate_missing_data()
+      if (nrow(missing_data) == 0) {
+        write.table(data.frame(Message = "Aucune donnée disponible"), file, sep = "\t", row.names = FALSE, quote = FALSE)
+        return()
+      }
+      summary_pop <- aggregate(cbind(N_individus, Donnees_manquantes) ~ Population, data = missing_data, FUN = sum)
+      summary_pop$Donnees_genotypees <- summary_pop$N_individus - summary_pop$Donnees_manquantes
+      summary_pop$Pourcentage_manquant <- (summary_pop$Donnees_manquantes / summary_pop$N_individus) * 100
+      write.table(
+        summary_pop[, c("Population", "N_individus", "Donnees_genotypees", "Donnees_manquantes", "Pourcentage_manquant")],
+        file,
+        sep = "\t",
+        row.names = FALSE,
+        quote = FALSE
+      )
+    }
+  )
+
+  # 4. Global (Somme sur Tous) (.txt)
+  output$download_summary_global_txt <- downloadHandler(
+    filename = function() paste0("summary_global_", Sys.Date(), ".txt"),
+    content = function(file) {
+      missing_data <- calculate_missing_data()
+      if (nrow(missing_data) == 0) {
+        write.table(data.frame(Message = "Aucune donnée disponible"), file, sep = "\t", row.names = FALSE, quote = FALSE)
+        return()
+      }
+      total_indiv <- sum(missing_data$N_individus)
+      total_missing <- sum(missing_data$Donnees_manquantes)
+      total_genotyped <- total_indiv - total_missing
+      pct_missing <- (total_missing / total_indiv) * 100
+      global_summary <- data.frame(
+        Total_Individus = total_indiv,
+        Total_Genotypes = total_genotyped,
+        Total_Manquants = total_missing,
+        Pourcentage_Manquants = round(pct_missing, 2)
+      )
+      write.table(
+        global_summary,
+        file,
+        sep = "\t",
+        row.names = FALSE,
+        quote = FALSE
+      )
     }
   )
 }

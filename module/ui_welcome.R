@@ -1,11 +1,10 @@
-# module/ui_welcome.R
+# ui_welcome.R
+
 welcome_ui <- function(id) {
   ns <- NS(id)
   
   # helper
   linebreaks <- function(n) HTML(strrep(br(), n))
-  
-  # data frames (same as you had) ...
   
   # Build tables as HTML strings
   table_one_col <- data_one_col |>

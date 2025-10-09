@@ -1,9 +1,9 @@
 server_genetic_drift <- function(input, output, session) {
   
-  ##### Genetic drift ####
+  # Genetic drift #
   simulation <- eventReactive(input$go, {
-    ## generate allele frequencies
-    ##
+
+    # generate allele frequencies
     N <- round(input$N)
     n_gen <- 20 * N
     two_n <- 2 * N
@@ -33,7 +33,6 @@ server_genetic_drift <- function(input, output, session) {
       mutate(p = ifelse(is.na(p), p_final, p))
     
     ## construct data frame for plotly
-    ##
     n_gen <- max(df$t)
     d <- crossing(
       df,
@@ -51,7 +50,6 @@ server_genetic_drift <- function(input, output, session) {
     n_gen <- max(d$t)
     
     ## plot it
-    ##
     if (n_gen > 100) {
       x <- round(seq(0, n_gen, length.out = 100))
     } else {
